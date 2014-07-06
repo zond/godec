@@ -12,7 +12,7 @@ func encodeDecode(t *testing.T, src, dst interface{}) {
 		return
 	}
 	if err = Unmarshal(b, dst); err != nil {
-		t.Errorf("Unable to decode to %v: %v", dst, err)
+		t.Errorf("Unable to decode to %v: %v", reflect.ValueOf(dst).Elem(), err)
 	}
 	dstElem := reflect.ValueOf(dst).Elem().Interface()
 	if !reflect.DeepEqual(src, dstElem) {

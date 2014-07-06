@@ -171,6 +171,45 @@ func decodeComplexValue(r io.Reader, v reflect.Value) (err error) {
 	return
 }
 
+var compatibleKinds = [][]reflect.Kind{
+	{reflect.Invalid},
+	{reflect.Bool},
+	{reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64},
+	{reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64},
+	{reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64},
+	{reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64},
+	{reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64},
+	{reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr},
+	{reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr},
+	{reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr},
+	{reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr},
+	{reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr},
+	{reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr},
+	{reflect.Float32, reflect.Float64},
+	{reflect.Float32, reflect.Float64},
+	{reflect.Complex64, reflect.Complex128},
+	{reflect.Complex64, reflect.Complex128},
+	{reflect.Array},
+	{reflect.Chan},
+	{reflect.Func},
+	{reflect.Interface},
+	{reflect.Map},
+	{reflect.Ptr},
+	{reflect.Slice},
+	{reflect.String},
+	{reflect.Struct},
+	{reflect.UnsafePointer},
+}
+
+func kindsCompatible(k1, k2 reflect.Kind) bool {
+	for _, comp := range compatibleKinds[int(k1)] {
+		if k2 == comp {
+			return true
+		}
+	}
+	return false
+}
+
 func (self *codec) decode(r io.Reader, v reflect.Value) (err error) {
 	for v.Kind() == reflect.Ptr {
 		v = v.Elem()
@@ -179,7 +218,7 @@ func (self *codec) decode(r io.Reader, v reflect.Value) (err error) {
 	if err != nil {
 		return
 	}
-	if self.kind != kind {
+	if !kindsCompatible(self.kind, kind) {
 		err = fmt.Errorf("Wrong kind in stream, wanted %v but got %v", self.kind, kind)
 		return
 	}
@@ -321,6 +360,8 @@ func createCodec(t reflect.Type) (result *codec, err error) {
 		result.generatedDecode = decodeStringValue
 	case reflect.Struct:
 	case reflect.UnsafePointer:
+		err = fmt.Errorf("Unable to create codec for %v", t)
+		return
 	}
 	return
 }
