@@ -58,3 +58,21 @@ func TestEncodeDecodeMaps(t *testing.T) {
 	encodeDecode(t, map[int]bool{44: true, 52: false}, &mIB)
 	encodeDecode(t, map[int]bool{442: true, 523: true}, &mIB)
 }
+
+func TestEncodeDecodeSlices(t *testing.T) {
+	var sS []string
+	encodeDecode(t, []string{"hehu", "hepp"}, &sS)
+	encodeDecode(t, []string{"kala", "bapa"}, &sS)
+	var sI32 []int32
+	encodeDecode(t, []int32{33, 44, 56, 1}, &sI32)
+	encodeDecode(t, []int32{1, 2, 3}, &sI32)
+}
+
+func TestEncodeDecodeArrays(t *testing.T) {
+	var aS [2]string
+	encodeDecode(t, [2]string{"hehu", "hepp"}, &aS)
+	encodeDecode(t, [2]string{"kala", "bapa"}, &aS)
+	var aI32 [3]int32
+	encodeDecode(t, [3]int32{33, 44, 56}, &aI32)
+	encodeDecode(t, [3]int32{1, 2, 3}, &aI32)
+}

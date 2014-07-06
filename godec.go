@@ -225,6 +225,78 @@ func (self *codec) decode(r io.Reader, v reflect.Value) (err error) {
 	return self.generatedDecode(r, v)
 }
 
+func arrayCodecs(t reflect.Type) (encoder func(io.Writer, reflect.Value) error, decoder func(io.Reader, reflect.Value) error, err error) {
+	var valueCodec *codec
+	if valueCodec, err = getCodec(t.Elem()); err != nil {
+		return
+	}
+	encoder = func(w io.Writer, v reflect.Value) (err error) {
+		if err = encodeUint(w, uint64(v.Len())); err != nil {
+			return
+		}
+		for i := 0; i < v.Len(); i++ {
+			value := v.Index(i)
+			if err = valueCodec.encode(w, value); err != nil {
+				return
+			}
+		}
+		return
+	}
+	decoder = func(r io.Reader, v reflect.Value) (err error) {
+		var size uint64
+		if size, err = decodeUint(r); err != nil {
+			return
+		}
+		typ := v.Type()
+		v.Set(reflect.New(typ).Elem())
+		for i := uint64(0); i < size; i++ {
+			value := reflect.New(typ.Elem())
+			if err = valueCodec.decode(r, value); err != nil {
+				return
+			}
+			v.Index(int(i)).Set(value.Elem())
+		}
+		return
+	}
+	return
+}
+
+func sliceCodecs(t reflect.Type) (encoder func(io.Writer, reflect.Value) error, decoder func(io.Reader, reflect.Value) error, err error) {
+	var valueCodec *codec
+	if valueCodec, err = getCodec(t.Elem()); err != nil {
+		return
+	}
+	encoder = func(w io.Writer, v reflect.Value) (err error) {
+		if err = encodeUint(w, uint64(v.Len())); err != nil {
+			return
+		}
+		for i := 0; i < v.Len(); i++ {
+			value := v.Index(i)
+			if err = valueCodec.encode(w, value); err != nil {
+				return
+			}
+		}
+		return
+	}
+	decoder = func(r io.Reader, v reflect.Value) (err error) {
+		var size uint64
+		if size, err = decodeUint(r); err != nil {
+			return
+		}
+		typ := v.Type()
+		v.Set(reflect.MakeSlice(typ, int(size), int(size)))
+		for i := uint64(0); i < size; i++ {
+			value := reflect.New(typ.Elem())
+			if err = valueCodec.decode(r, value); err != nil {
+				return
+			}
+			v.Index(int(i)).Set(value.Elem())
+		}
+		return
+	}
+	return
+}
+
 func mapCodecs(t reflect.Type) (encoder func(io.Writer, reflect.Value) error, decoder func(io.Reader, reflect.Value) error, err error) {
 	var keyCodec *codec
 	if keyCodec, err = getCodec(t.Key()); err != nil {
@@ -340,6 +412,7 @@ func createCodec(t reflect.Type) (result *codec, err error) {
 		result.generatedEncode = encodeComplexValue
 		result.generatedDecode = decodeComplexValue
 	case reflect.Array:
+		result.generatedEncode, result.generatedDecode, err = arrayCodecs(t)
 	case reflect.Chan:
 		err = fmt.Errorf("Unable to create codec for %v", t)
 		return
@@ -355,6 +428,7 @@ func createCodec(t reflect.Type) (result *codec, err error) {
 	case reflect.Map:
 		result.generatedEncode, result.generatedDecode, err = mapCodecs(t)
 	case reflect.Slice:
+		result.generatedEncode, result.generatedDecode, err = sliceCodecs(t)
 	case reflect.String:
 		result.generatedEncode = encodeStringValue
 		result.generatedDecode = decodeStringValue
