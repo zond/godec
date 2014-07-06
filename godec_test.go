@@ -45,4 +45,16 @@ func TestEncodeDecodePrimitiveTypes(t *testing.T) {
 	var c128 complex128
 	encodeDecode(t, complex(float64(5.56), float64(5.1)), &c128)
 	encodeDecode(t, complex(float64(4.11), float64(63.11)), &c128)
+	var b bool
+	encodeDecode(t, true, &b)
+	encodeDecode(t, false, &b)
+}
+
+func TestEncodeDecodeMaps(t *testing.T) {
+	var mSI map[string]int
+	encodeDecode(t, map[string]int{"hej": 1, "haha": 2}, &mSI)
+	encodeDecode(t, map[string]int{"hejsan": 10, "hahaha": 20}, &mSI)
+	var mIB map[int]bool
+	encodeDecode(t, map[int]bool{44: true, 52: false}, &mIB)
+	encodeDecode(t, map[int]bool{442: true, 523: true}, &mIB)
 }
