@@ -1,6 +1,9 @@
 package godec
 
 import (
+	"bytes"
+	"encoding/gob"
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -18,6 +21,67 @@ func encodeDecode(t *testing.T, src, dst interface{}) {
 	if !reflect.DeepEqual(src, dstElem) {
 		t.Errorf("Encoding/decoding %v produced %v", src, dstElem)
 	}
+}
+
+type marshaller interface {
+	Marshal(interface{}) ([]byte, error)
+	Unmarshal([]byte, interface{}) error
+}
+
+var bigSlice = []string{}
+
+func init() {
+	for i := 0; i < 1000; i++ {
+		bigSlice = append(bigSlice, fmt.Sprintf("String nr %v", i))
+	}
+}
+
+func runBench(b *testing.B, m marshaller) {
+	for i := 0; i < b.N; i++ {
+		res, err := m.Marshal(bigSlice)
+		if err != nil {
+			b.Fatalf("%v", err)
+		}
+		if len(res) == 0 {
+			b.Fatalf("Zero marshalling?")
+		}
+	}
+}
+
+type godecMarshaller struct{}
+
+func (self godecMarshaller) Marshal(i interface{}) (b []byte, err error) {
+	return Marshal(i)
+}
+
+func (self godecMarshaller) Unmarshal(b []byte, i interface{}) (err error) {
+	return Unmarshal(b, i)
+}
+
+type gobMarshaller struct{}
+
+func (self gobMarshaller) Marshal(i interface{}) (b []byte, err error) {
+	buf := &bytes.Buffer{}
+	if err = gob.NewEncoder(buf).Encode(i); err != nil {
+		return
+	}
+	b = buf.Bytes()
+	return
+}
+
+func (self gobMarshaller) Unmarshal(b []byte, i interface{}) (err error) {
+	if err = gob.NewDecoder(bytes.NewBuffer(b)).Decode(i); err != nil {
+		return
+	}
+	return
+}
+
+func BenchmarkGob(b *testing.B) {
+	runBench(b, gobMarshaller{})
+}
+
+func BenchmarkGodec(b *testing.B) {
+	runBench(b, godecMarshaller{})
 }
 
 func TestEncodeDecodePrimitiveTypes(t *testing.T) {
