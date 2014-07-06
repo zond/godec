@@ -186,6 +186,53 @@ func (self *codec) decode(r io.Reader, v reflect.Value) (err error) {
 	return self.generatedDecode(r, v)
 }
 
+func mapCodecs(t reflect.Type) (encoder func(io.Writer, reflect.Value) error, decoder func(io.Reader, reflect.Value) error, err error) {
+	var keyCodec *codec
+	if keyCodec, err = getCodec(t.Key()); err != nil {
+		return
+	}
+	var valueCodec *codec
+	if valueCodec, err = getCodec(t.Elem()); err != nil {
+		return
+	}
+	encoder = func(w io.Writer, v reflect.Value) (err error) {
+		if err = encodeUint(w, uint64(v.Len())); err != nil {
+			return
+		}
+		for _, key := range v.MapKeys() {
+			if err = keyCodec.encode(w, key); err != nil {
+				return
+			}
+			value := v.MapIndex(key)
+			if err = valueCodec.encode(w, value); err != nil {
+				return
+			}
+		}
+		return
+	}
+	decoder = func(r io.Reader, v reflect.Value) (err error) {
+		var size uint64
+		if size, err = decodeUint(r); err != nil {
+			return
+		}
+		typ := v.Type()
+		v.Set(reflect.MakeMap(typ))
+		for i := uint64(0); i < size; i++ {
+			key := reflect.New(typ.Key())
+			if err = keyCodec.decode(r, key); err != nil {
+				return
+			}
+			value := reflect.New(typ.Elem())
+			if err = valueCodec.decode(r, value); err != nil {
+				return
+			}
+			v.SetMapIndex(key.Elem(), value.Elem())
+		}
+		return
+	}
+	return
+}
+
 func createCodec(t reflect.Type) (result *codec, err error) {
 	result = &codec{
 		kind: t.Kind(),
@@ -245,49 +292,7 @@ func createCodec(t reflect.Type) (result *codec, err error) {
 		err = fmt.Errorf("Unable to create codec for %v", t)
 		return
 	case reflect.Map:
-		var keyCodec *codec
-		if keyCodec, err = getCodec(t.Key()); err != nil {
-			return
-		}
-		var valueCodec *codec
-		if valueCodec, err = getCodec(t.Elem()); err != nil {
-			return
-		}
-		result.generatedEncode = func(w io.Writer, v reflect.Value) (err error) {
-			if err = encodeUint(w, uint64(v.Len())); err != nil {
-				return
-			}
-			for _, key := range v.MapKeys() {
-				if err = keyCodec.encode(w, key); err != nil {
-					return
-				}
-				value := v.MapIndex(key)
-				if err = valueCodec.encode(w, value); err != nil {
-					return
-				}
-			}
-			return
-		}
-		result.generatedDecode = func(r io.Reader, v reflect.Value) (err error) {
-			var size uint64
-			if size, err = decodeUint(r); err != nil {
-				return
-			}
-			typ := v.Type()
-			v.Set(reflect.MakeMap(typ))
-			for i := uint64(0); i < size; i++ {
-				key := reflect.New(typ.Key())
-				if err = keyCodec.decode(r, key); err != nil {
-					return
-				}
-				value := reflect.New(typ.Elem())
-				if err = valueCodec.decode(r, value); err != nil {
-					return
-				}
-				v.SetMapIndex(key.Elem(), value.Elem())
-			}
-			return
-		}
+		result.generatedEncode, result.generatedDecode, err = mapCodecs(t)
 	case reflect.Slice:
 	case reflect.String:
 		result.generatedEncode = func(w io.Writer, v reflect.Value) (err error) {
