@@ -233,6 +233,28 @@ func mapCodecs(t reflect.Type) (encoder func(io.Writer, reflect.Value) error, de
 	return
 }
 
+func encodeStringValue(w io.Writer, v reflect.Value) (err error) {
+	b := []byte(v.String())
+	if err = encodeUint(w, uint64(len(b))); err != nil {
+		return
+	}
+	_, err = w.Write(b)
+	return
+}
+
+func decodeStringValue(r io.Reader, v reflect.Value) (err error) {
+	var size uint64
+	if size, err = decodeUint(r); err != nil {
+		return
+	}
+	b := make([]byte, int(size))
+	if _, err = io.ReadAtLeast(r, b, len(b)); err != nil {
+		return
+	}
+	v.SetString(string(b))
+	return
+}
+
 func createCodec(t reflect.Type) (result *codec, err error) {
 	result = &codec{
 		kind: t.Kind(),
@@ -295,26 +317,8 @@ func createCodec(t reflect.Type) (result *codec, err error) {
 		result.generatedEncode, result.generatedDecode, err = mapCodecs(t)
 	case reflect.Slice:
 	case reflect.String:
-		result.generatedEncode = func(w io.Writer, v reflect.Value) (err error) {
-			b := []byte(v.String())
-			if err = encodeUint(w, uint64(len(b))); err != nil {
-				return
-			}
-			_, err = w.Write(b)
-			return
-		}
-		result.generatedDecode = func(r io.Reader, v reflect.Value) (err error) {
-			var size uint64
-			if size, err = decodeUint(r); err != nil {
-				return
-			}
-			b := make([]byte, int(size))
-			if _, err = io.ReadAtLeast(r, b, len(b)); err != nil {
-				return
-			}
-			v.SetString(string(b))
-			return
-		}
+		result.generatedEncode = encodeStringValue
+		result.generatedDecode = decodeStringValue
 	case reflect.Struct:
 	case reflect.UnsafePointer:
 	}
