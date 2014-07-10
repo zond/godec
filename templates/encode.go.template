@@ -6,7 +6,6 @@ package godec
 import (
 		"io"
 		"reflect"
-		"fmt"
 )
 
 func encodeinterface__(w io.Writer, i interface{}) (err error) {
@@ -16,6 +15,8 @@ func encodeinterface__(w io.Writer, i interface{}) (err error) {
 		return encodeKind(w, reflect.Invalid){{range $index, $name := $primitives}}
 	case {{$name}}:
 		return encode{{gofilter $name}}(w, v){{end}}{{range $index, $name := $all}}
+	case *{{$name}}:
+		return encode{{gofilter $name}}(w, *v){{end}}{{range $index, $name := $all}}
 	case []{{$name}}:
 		if err = encodeKind(w, reflect.Slice); err != nil {
 			return
@@ -25,6 +26,42 @@ func encodeinterface__(w io.Writer, i interface{}) (err error) {
 		}
 		for _, el := range v {
 			if err = encode{{gofilter $name}}(w, el); err != nil {
+				return
+			}
+		}
+	case *[]{{$name}}:
+		if err = encodeKind(w, reflect.Slice); err != nil {
+			return
+		}
+		if err = encodeint(w, len(*v)); err != nil {
+			return
+		}
+		for _, el := range *v {
+			if err = encode{{gofilter $name}}(w, el); err != nil {
+				return
+			}
+		}
+	case []*{{$name}}:
+		if err = encodeKind(w, reflect.Slice); err != nil {
+			return
+		}
+		if err = encodeint(w, len(v)); err != nil {
+			return
+		}
+		for _, el := range v {
+			if err = encode{{gofilter $name}}(w, *el); err != nil {
+				return
+			}
+		}
+	case *[]*{{$name}}:
+		if err = encodeKind(w, reflect.Slice); err != nil {
+			return
+		}
+		if err = encodeint(w, len(*v)); err != nil {
+			return
+		}
+		for _, el := range *v {
+			if err = encode{{gofilter $name}}(w, *el); err != nil {
 				return
 			}
 		}{{end}}{{range $index1, $name1 := $all}}{{range $index2, $name2 := $all}}
@@ -42,9 +79,114 @@ func encodeinterface__(w io.Writer, i interface{}) (err error) {
 			if err = encode{{gofilter $name2}}(w, value); err != nil {
 				return
 			}
+		}
+	case *map[{{$name1}}]{{$name2}}:
+		if err = encodeKind(w, reflect.Map); err != nil {
+			return
+		}
+		if err = encodeint(w, len(*v)); err != nil {
+			return
+		}
+		for key, value := range *v {
+			if err = encode{{gofilter $name1}}(w, key); err != nil {
+				return
+			}
+			if err = encode{{gofilter $name2}}(w, value); err != nil {
+				return
+			}
+		}
+	case map[*{{$name1}}]{{$name2}}:
+		if err = encodeKind(w, reflect.Map); err != nil {
+			return
+		}
+		if err = encodeint(w, len(v)); err != nil {
+			return
+		}
+		for key, value := range v {
+			if err = encode{{gofilter $name1}}(w, *key); err != nil {
+				return
+			}
+			if err = encode{{gofilter $name2}}(w, value); err != nil {
+				return
+			}
+		}
+	case *map[*{{$name1}}]{{$name2}}:
+		if err = encodeKind(w, reflect.Map); err != nil {
+			return
+		}
+		if err = encodeint(w, len(*v)); err != nil {
+			return
+		}
+		for key, value := range *v {
+			if err = encode{{gofilter $name1}}(w, *key); err != nil {
+				return
+			}
+			if err = encode{{gofilter $name2}}(w, value); err != nil {
+				return
+			}
+		}
+	case map[{{$name1}}]*{{$name2}}:
+		if err = encodeKind(w, reflect.Map); err != nil {
+			return
+		}
+		if err = encodeint(w, len(v)); err != nil {
+			return
+		}
+		for key, value := range v {
+			if err = encode{{gofilter $name1}}(w, key); err != nil {
+				return
+			}
+			if err = encode{{gofilter $name2}}(w, *value); err != nil {
+				return
+			}
+		}
+	case *map[{{$name1}}]*{{$name2}}:
+		if err = encodeKind(w, reflect.Map); err != nil {
+			return
+		}
+		if err = encodeint(w, len(*v)); err != nil {
+			return
+		}
+		for key, value := range *v {
+			if err = encode{{gofilter $name1}}(w, key); err != nil {
+				return
+			}
+			if err = encode{{gofilter $name2}}(w, *value); err != nil {
+				return
+			}
+		}
+	case map[*{{$name1}}]*{{$name2}}:
+		if err = encodeKind(w, reflect.Map); err != nil {
+			return
+		}
+		if err = encodeint(w, len(v)); err != nil {
+			return
+		}
+		for key, value := range v {
+			if err = encode{{gofilter $name1}}(w, *key); err != nil {
+				return
+			}
+			if err = encode{{gofilter $name2}}(w, *value); err != nil {
+				return
+			}
+		}
+	case *map[*{{$name1}}]*{{$name2}}:
+		if err = encodeKind(w, reflect.Map); err != nil {
+			return
+		}
+		if err = encodeint(w, len(*v)); err != nil {
+			return
+		}
+		for key, value := range *v {
+			if err = encode{{gofilter $name1}}(w, *key); err != nil {
+				return
+			}
+			if err = encode{{gofilter $name2}}(w, *value); err != nil {
+				return
+			}
 		}{{end}}{{end}}
 	default:
-		err = fmt.Errorf("Not yet implemented encoding %v", i)
+		return encodereflect_Value(w, reflect.ValueOf(i))
 	}
 
 	return
