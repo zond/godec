@@ -23,6 +23,6 @@ _testmain.go
 *.test
 .*.swp
 
-encoder_encode.go
-decoder_decode.go
+encode.go
+decode.go
 

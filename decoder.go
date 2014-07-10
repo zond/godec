@@ -13,3 +13,7 @@ func NewDecoder(r io.Reader) *Decoder {
 		reader: r,
 	}
 }
+
+func (self *Decoder) Decode(i interface{}) (err error) {
+	return decodeinterface__(self.reader, i)
+}

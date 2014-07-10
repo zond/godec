@@ -1,0 +1,9 @@
+package godec
+
+import (
+		"io"
+)
+
+func decodeinterface__(r io.Reader, i interface{}) (err error) {
+	return
+}

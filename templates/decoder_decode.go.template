@@ -1,5 +1,0 @@
-package godec
-
-func (self *Decoder) Decode(i interface{}) (err error) {
-	return
-}

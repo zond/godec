@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
+	"math"
 	"reflect"
 )
 
@@ -21,7 +22,11 @@ func (self readerByteReader) ReadByte() (result byte, err error) {
 }
 
 func encodeKind(w io.Writer, k reflect.Kind) (err error) {
-	return encodeuint(w, uint64(k))
+	return encodeuint64(w, uint64(k))
+}
+
+func encodereflect_Value(w io.Writer, v reflect.Value) (err error) {
+	return
 }
 
 func decodeKind(r io.Reader) (result reflect.Kind, err error) {
@@ -35,38 +40,30 @@ func decodeKind(r io.Reader) (result reflect.Kind, err error) {
 
 func encodebool(w io.Writer, b bool) (err error) {
 	if b {
-		return encodeuint(1)
+		return encodeuint64(w, 1)
 	} else {
-		return encodeuint(0)
+		return encodeuint64(w, 0)
 	}
 }
 
 func encodefloat32(w io.Writer, f float32) (err error) {
-	return encodeuint32(w, math.Float32Bits(f))
+	return encodeuint32(w, math.Float32bits(f))
 }
 
 func encodefloat64(w io.Writer, f float64) (err error) {
-	return encodeuint64(w, math.Float64Bits(f))
+	return encodeuint64(w, math.Float64bits(f))
 }
 
 func decodefloat32(r io.Reader) (f float32, err error) {
 	u, err := decodeuint32(r)
-	f = math.Float32FromBits(u)
+	f = math.Float32frombits(u)
 	return
 }
 
 func decodefloat64(r io.Reader) (f float64, err error) {
 	u, err := decodeuint64(r)
-	f = math.Float64FromBits(u)
+	f = math.Float64frombits(u)
 	return
-}
-
-func encoderune(w io.Writer, r rune) (err error) {
-	return encodeint64(int64(r))
-}
-
-func encodebyte(w io.Writer, b byte) (err error) {
-	return encodeuint64(uint64(b))
 }
 
 func decodeint(r io.Reader) (result int, err error) {
@@ -180,17 +177,17 @@ func encodeuint64(w io.Writer, u uint64) (err error) {
 }
 
 func encodecomplex64(w io.Writer, c complex64) (err error) {
-	if err = encodefloat32(real(c)); err != nil {
+	if err = encodefloat32(w, real(c)); err != nil {
 		return
 	}
-	return encodefloat32(imag(c))
+	return encodefloat32(w, imag(c))
 }
 
 func encodecomplex128(w io.Writer, c complex128) (err error) {
-	if err = encodefloat64(real(c)); err != nil {
+	if err = encodefloat64(w, real(c)); err != nil {
 		return
 	}
-	return encodefloat64(imag(c))
+	return encodefloat64(w, imag(c))
 }
 
 var compatibleKinds = [][]reflect.Kind{

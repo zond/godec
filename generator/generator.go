@@ -11,8 +11,6 @@ import (
 var primitives = []string{
 	"string",
 	"bool",
-	"byte",
-	"rune",
 	"int",
 	"int8",
 	"int16",

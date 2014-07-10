@@ -11,3 +11,7 @@ func NewEncoder(w io.Writer) *Encoder {
 		writer: w,
 	}
 }
+
+func (self *Encoder) Encode(i interface{}) (err error) {
+	return encodeinterface__(self.writer, i)
+}
