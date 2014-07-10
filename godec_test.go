@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+
+	binc "github.com/ugorji/go/codec"
 )
 
 func encodeDecode(t *testing.T, src, dst interface{}) {
@@ -37,6 +39,7 @@ func init() {
 }
 
 func runBench(b *testing.B, m marshaller) {
+	target := []string{}
 	for i := 0; i < b.N; i++ {
 		res, err := m.Marshal(bigSlice)
 		if err != nil {
@@ -45,7 +48,28 @@ func runBench(b *testing.B, m marshaller) {
 		if len(res) == 0 {
 			b.Fatalf("Zero marshalling?")
 		}
+		if err = m.Unmarshal(res, &target); err != nil {
+			b.Fatalf("%v", err)
+		}
 	}
+}
+
+var bh binc.BincHandle
+
+type bincMarshaller struct{}
+
+func (self bincMarshaller) Marshal(i interface{}) (b []byte, err error) {
+	if err = binc.NewEncoderBytes(&b, &bh).Encode(i); err != nil {
+		return
+	}
+	return
+}
+
+func (self bincMarshaller) Unmarshal(b []byte, i interface{}) (err error) {
+	if err = binc.NewDecoderBytes(b, &bh).Decode(i); err != nil {
+		return
+	}
+	return
 }
 
 type godecMarshaller struct{}
@@ -76,11 +100,15 @@ func (self gobMarshaller) Unmarshal(b []byte, i interface{}) (err error) {
 	return
 }
 
-func BenchmarkGob(b *testing.B) {
+func BenchmarkBincStringSlice(b *testing.B) {
+	runBench(b, bincMarshaller{})
+}
+
+func BenchmarkGobStringSlice(b *testing.B) {
 	runBench(b, gobMarshaller{})
 }
 
-func BenchmarkGodec(b *testing.B) {
+func BenchmarkGodecStringSlice(b *testing.B) {
 	runBench(b, godecMarshaller{})
 }
 

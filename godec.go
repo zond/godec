@@ -3,15 +3,9 @@ package godec
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"io"
 	"reflect"
-	"sync"
-	"unsafe"
 )
-
-var codecByType = map[reflect.Type]*codec{}
-var codecLock = &sync.RWMutex{}
 
 type readerByteReader struct {
 	io.Reader
@@ -26,28 +20,12 @@ func (self readerByteReader) ReadByte() (result byte, err error) {
 	return
 }
 
-type codec struct {
-	kind            reflect.Kind
-	generatedEncode func(w io.Writer, v reflect.Value) (err error)
-	generatedDecode func(r io.Reader, v reflect.Value) (err error)
-}
-
-func (self *codec) encode(w io.Writer, v reflect.Value) (err error) {
-	for v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-	if err = encodeKind(w, self.kind); err != nil {
-		return
-	}
-	return self.generatedEncode(w, v)
-}
-
 func encodeKind(w io.Writer, k reflect.Kind) (err error) {
-	return encodeUint(w, uint64(k))
+	return encodeuint(w, uint64(k))
 }
 
 func decodeKind(r io.Reader) (result reflect.Kind, err error) {
-	u, err := decodeUint(r)
+	u, err := decodeuint(r)
 	if err != nil {
 		return
 	}
@@ -55,33 +33,95 @@ func decodeKind(r io.Reader) (result reflect.Kind, err error) {
 	return
 }
 
-func encodeFloat(w io.Writer, f float64) (err error) {
-	return encodeUint(w, *(*uint64)(unsafe.Pointer(&f)))
+func encodebool(w io.Writer, b bool) (err error) {
+	if b {
+		return encodeuint(1)
+	} else {
+		return encodeuint(0)
+	}
 }
 
-func decodeFloat(r io.Reader) (f float64, err error) {
-	u, err := decodeUint(r)
-	if err != nil {
-		return
-	}
-	f = *(*float64)(unsafe.Pointer(&u))
+func encodefloat32(w io.Writer, f float32) (err error) {
+	return encodeuint32(w, math.Float32Bits(f))
+}
+
+func encodefloat64(w io.Writer, f float64) (err error) {
+	return encodeuint64(w, math.Float64Bits(f))
+}
+
+func decodefloat32(r io.Reader) (f float32, err error) {
+	u, err := decodeuint32(r)
+	f = math.Float32FromBits(u)
 	return
 }
 
-func encodeFloatValue(w io.Writer, v reflect.Value) (err error) {
-	return encodeFloat(w, v.Float())
-}
-
-func decodeFloatValue(r io.Reader, v reflect.Value) (err error) {
-	f, err := decodeFloat(r)
-	if err != nil {
-		return
-	}
-	v.SetFloat(f)
+func decodefloat64(r io.Reader) (f float64, err error) {
+	u, err := decodeuint64(r)
+	f = math.Float64FromBits(u)
 	return
 }
 
-func decodeUint(r io.Reader) (result uint64, err error) {
+func encoderune(w io.Writer, r rune) (err error) {
+	return encodeint64(int64(r))
+}
+
+func encodebyte(w io.Writer, b byte) (err error) {
+	return encodeuint64(uint64(b))
+}
+
+func decodeint(r io.Reader) (result int, err error) {
+	u, err := decodeint64(r)
+	result = int(u)
+	return
+}
+
+func decodeint8(r io.Reader) (result int8, err error) {
+	u, err := decodeint64(r)
+	result = int8(u)
+	return
+}
+
+func decodeint16(r io.Reader) (result int16, err error) {
+	u, err := decodeint64(r)
+	result = int16(u)
+	return
+}
+
+func decodeint32(r io.Reader) (result int32, err error) {
+	u, err := decodeint64(r)
+	result = int32(u)
+	return
+}
+
+func decodeint64(r io.Reader) (result int64, err error) {
+	return binary.ReadVarint(readerByteReader{r})
+}
+
+func decodeuint(r io.Reader) (result uint, err error) {
+	u, err := decodeuint64(r)
+	result = uint(u)
+	return
+}
+
+func decodeuint8(r io.Reader) (result uint8, err error) {
+	u, err := decodeuint64(r)
+	result = uint8(u)
+	return
+}
+
+func decodeuint16(r io.Reader) (result uint16, err error) {
+	u, err := decodeuint64(r)
+	result = uint16(u)
+	return
+}
+
+func decodeuint32(r io.Reader) (result uint32, err error) {
+	u, err := decodeuint64(r)
+	result = uint32(u)
+	return
+}
+
+func decodeuint64(r io.Reader) (result uint64, err error) {
 	return binary.ReadUvarint(readerByteReader{r})
 }
 
@@ -89,86 +129,68 @@ func decodeInt(r io.Reader) (result int64, err error) {
 	return binary.ReadVarint(readerByteReader{r})
 }
 
-func encodeUint(w io.Writer, u uint64) (err error) {
+func encodeint(w io.Writer, u int) (err error) {
+	return encodeint64(w, int64(u))
+}
+
+func encodeint8(w io.Writer, u int8) (err error) {
+	return encodeint64(w, int64(u))
+}
+
+func encodeint16(w io.Writer, u int16) (err error) {
+	return encodeint64(w, int64(u))
+}
+
+func encodeint32(w io.Writer, u int32) (err error) {
+	return encodeint64(w, int64(u))
+}
+
+func encodeint64(w io.Writer, u int64) (err error) {
+	buf := make([]byte, binary.MaxVarintLen64)
+	bw := binary.PutVarint(buf, u)
+	_, err = w.Write(buf[:bw])
+	return
+}
+
+func encodeuintptr(w io.Writer, u uintptr) (err error) {
+	return encodeuint64(w, uint64(u))
+}
+
+func encodeuint(w io.Writer, u uint) (err error) {
+	return encodeuint64(w, uint64(u))
+}
+
+func encodeuint8(w io.Writer, u uint8) (err error) {
+	return encodeuint64(w, uint64(u))
+}
+
+func encodeuint16(w io.Writer, u uint16) (err error) {
+	return encodeuint64(w, uint64(u))
+}
+
+func encodeuint32(w io.Writer, u uint32) (err error) {
+	return encodeuint64(w, uint64(u))
+}
+
+func encodeuint64(w io.Writer, u uint64) (err error) {
 	buf := make([]byte, binary.MaxVarintLen64)
 	bw := binary.PutUvarint(buf, u)
 	_, err = w.Write(buf[:bw])
 	return
 }
 
-func encodeInt(w io.Writer, i int64) (err error) {
-	buf := make([]byte, 8)
-	bw := binary.PutVarint(buf, i)
-	_, err = w.Write(buf[:bw])
-	return
-}
-
-func encodeBoolValue(w io.Writer, v reflect.Value) (err error) {
-	if v.Bool() {
-		return encodeUint(w, 1)
-	} else {
-		return encodeUint(w, 0)
-	}
-}
-
-func decodeBoolValue(r io.Reader, v reflect.Value) (err error) {
-	i, err := decodeUint(r)
-	if err != nil {
+func encodecomplex64(w io.Writer, c complex64) (err error) {
+	if err = encodefloat32(real(c)); err != nil {
 		return
 	}
-	if i == 0 {
-		v.SetBool(false)
-	} else {
-		v.SetBool(true)
-	}
-	return
+	return encodefloat32(imag(c))
 }
 
-func decodeIntValue(r io.Reader, v reflect.Value) (err error) {
-	i, err := decodeInt(r)
-	if err != nil {
+func encodecomplex128(w io.Writer, c complex128) (err error) {
+	if err = encodefloat64(real(c)); err != nil {
 		return
 	}
-	v.SetInt(i)
-	return
-}
-
-func decodeUintValue(r io.Reader, v reflect.Value) (err error) {
-	u, err := decodeUint(r)
-	if err != nil {
-		return
-	}
-	v.SetUint(u)
-	return
-}
-
-func encodeIntValue(w io.Writer, v reflect.Value) (err error) {
-	return encodeInt(w, v.Int())
-}
-
-func encodeUintValue(w io.Writer, v reflect.Value) (err error) {
-	return encodeUint(w, v.Uint())
-}
-
-func encodeComplexValue(w io.Writer, v reflect.Value) (err error) {
-	cpy := v.Complex()
-	if err = encodeFloat(w, real(cpy)); err != nil {
-		return
-	}
-	return encodeFloat(w, imag(cpy))
-}
-
-func decodeComplexValue(r io.Reader, v reflect.Value) (err error) {
-	re, err := decodeFloat(r)
-	if err != nil {
-		return
-	}
-	im, err := decodeFloat(r)
-	if err != nil {
-		return
-	}
-	v.SetComplex(complex(re, im))
-	return
+	return encodefloat64(imag(c))
 }
 
 var compatibleKinds = [][]reflect.Kind{
@@ -210,291 +232,25 @@ func kindsCompatible(k1, k2 reflect.Kind) bool {
 	return false
 }
 
-func (self *codec) decode(r io.Reader, v reflect.Value) (err error) {
-	for v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-	kind, err := decodeKind(r)
-	if err != nil {
+func encodestring(w io.Writer, s string) (err error) {
+	if err = encodeint(w, len(s)); err != nil {
 		return
 	}
-	if !kindsCompatible(self.kind, kind) {
-		err = fmt.Errorf("Wrong kind in stream, wanted %v but got %v", self.kind, kind)
-		return
-	}
-	return self.generatedDecode(r, v)
-}
-
-func arrayCodecs(t reflect.Type) (encoder func(io.Writer, reflect.Value) error, decoder func(io.Reader, reflect.Value) error, err error) {
-	var valueCodec *codec
-	if valueCodec, err = getCodec(t.Elem()); err != nil {
-		return
-	}
-	encoder = func(w io.Writer, v reflect.Value) (err error) {
-		if err = encodeUint(w, uint64(v.Len())); err != nil {
-			return
-		}
-		for i := 0; i < v.Len(); i++ {
-			value := v.Index(i)
-			if err = valueCodec.encode(w, value); err != nil {
-				return
-			}
-		}
-		return
-	}
-	decoder = func(r io.Reader, v reflect.Value) (err error) {
-		var size uint64
-		if size, err = decodeUint(r); err != nil {
-			return
-		}
-		typ := v.Type()
-		v.Set(reflect.New(typ).Elem())
-		for i := uint64(0); i < size; i++ {
-			value := reflect.New(typ.Elem())
-			if err = valueCodec.decode(r, value); err != nil {
-				return
-			}
-			v.Index(int(i)).Set(value.Elem())
-		}
-		return
-	}
+	_, err = io.WriteString(w, s)
 	return
 }
 
-func sliceCodecs(t reflect.Type) (encoder func(io.Writer, reflect.Value) error, decoder func(io.Reader, reflect.Value) error, err error) {
-	var valueCodec *codec
-	if valueCodec, err = getCodec(t.Elem()); err != nil {
-		return
-	}
-	encoder = func(w io.Writer, v reflect.Value) (err error) {
-		if err = encodeUint(w, uint64(v.Len())); err != nil {
-			return
-		}
-		for i := 0; i < v.Len(); i++ {
-			value := v.Index(i)
-			if err = valueCodec.encode(w, value); err != nil {
-				return
-			}
-		}
-		return
-	}
-	decoder = func(r io.Reader, v reflect.Value) (err error) {
-		var size uint64
-		if size, err = decodeUint(r); err != nil {
-			return
-		}
-		typ := v.Type()
-		v.Set(reflect.MakeSlice(typ, int(size), int(size)))
-		for i := uint64(0); i < size; i++ {
-			value := reflect.New(typ.Elem())
-			if err = valueCodec.decode(r, value); err != nil {
-				return
-			}
-			v.Index(int(i)).Set(value.Elem())
-		}
-		return
-	}
-	return
-}
-
-func mapCodecs(t reflect.Type) (encoder func(io.Writer, reflect.Value) error, decoder func(io.Reader, reflect.Value) error, err error) {
-	var keyCodec *codec
-	if keyCodec, err = getCodec(t.Key()); err != nil {
-		return
-	}
-	var valueCodec *codec
-	if valueCodec, err = getCodec(t.Elem()); err != nil {
-		return
-	}
-	encoder = func(w io.Writer, v reflect.Value) (err error) {
-		if err = encodeUint(w, uint64(v.Len())); err != nil {
-			return
-		}
-		for _, key := range v.MapKeys() {
-			if err = keyCodec.encode(w, key); err != nil {
-				return
-			}
-			value := v.MapIndex(key)
-			if err = valueCodec.encode(w, value); err != nil {
-				return
-			}
-		}
-		return
-	}
-	decoder = func(r io.Reader, v reflect.Value) (err error) {
-		var size uint64
-		if size, err = decodeUint(r); err != nil {
-			return
-		}
-		typ := v.Type()
-		v.Set(reflect.MakeMap(typ))
-		for i := uint64(0); i < size; i++ {
-			key := reflect.New(typ.Key())
-			if err = keyCodec.decode(r, key); err != nil {
-				return
-			}
-			value := reflect.New(typ.Elem())
-			if err = valueCodec.decode(r, value); err != nil {
-				return
-			}
-			v.SetMapIndex(key.Elem(), value.Elem())
-		}
-		return
-	}
-	return
-}
-
-func encodeStringValue(w io.Writer, v reflect.Value) (err error) {
-	b := []byte(v.String())
-	if err = encodeUint(w, uint64(len(b))); err != nil {
-		return
-	}
-	_, err = w.Write(b)
-	return
-}
-
-func decodeStringValue(r io.Reader, v reflect.Value) (err error) {
-	var size uint64
-	if size, err = decodeUint(r); err != nil {
+func decodestring(r io.Reader) (result string, err error) {
+	var size int
+	if size, err = decodeint(r); err != nil {
 		return
 	}
 	b := make([]byte, int(size))
 	if _, err = io.ReadAtLeast(r, b, len(b)); err != nil {
 		return
 	}
-	v.SetString(string(b))
+	result = string(b)
 	return
-}
-
-func createCodec(t reflect.Type) (result *codec, err error) {
-	result = &codec{
-		kind: t.Kind(),
-	}
-	switch result.kind {
-	case reflect.Invalid:
-		err = fmt.Errorf("Unable to create codec for invalid kind")
-		return
-	case reflect.Bool:
-		result.generatedEncode = encodeBoolValue
-		result.generatedDecode = decodeBoolValue
-	case reflect.Int:
-		fallthrough
-	case reflect.Int8:
-		fallthrough
-	case reflect.Int16:
-		fallthrough
-	case reflect.Int32:
-		fallthrough
-	case reflect.Int64:
-		result.generatedEncode = encodeIntValue
-		result.generatedDecode = decodeIntValue
-	case reflect.Uint:
-		fallthrough
-	case reflect.Uint8:
-		fallthrough
-	case reflect.Uint16:
-		fallthrough
-	case reflect.Uint32:
-		fallthrough
-	case reflect.Uint64:
-		fallthrough
-	case reflect.Uintptr:
-		result.generatedEncode = encodeUintValue
-		result.generatedDecode = decodeUintValue
-	case reflect.Float32:
-		fallthrough
-	case reflect.Float64:
-		result.generatedEncode = encodeFloatValue
-		result.generatedDecode = decodeFloatValue
-	case reflect.Complex64:
-		fallthrough
-	case reflect.Complex128:
-		result.generatedEncode = encodeComplexValue
-		result.generatedDecode = decodeComplexValue
-	case reflect.Array:
-		result.generatedEncode, result.generatedDecode, err = arrayCodecs(t)
-	case reflect.Chan:
-		err = fmt.Errorf("Unable to create codec for %v", t)
-		return
-	case reflect.Func:
-		err = fmt.Errorf("Unable to create codec for %v", t)
-		return
-	case reflect.Interface:
-		err = fmt.Errorf("Unable to create codec for %v", t)
-		return
-	case reflect.Ptr:
-		err = fmt.Errorf("Unable to create codec for %v", t)
-		return
-	case reflect.Map:
-		result.generatedEncode, result.generatedDecode, err = mapCodecs(t)
-	case reflect.Slice:
-		result.generatedEncode, result.generatedDecode, err = sliceCodecs(t)
-	case reflect.String:
-		result.generatedEncode = encodeStringValue
-		result.generatedDecode = decodeStringValue
-	case reflect.Struct:
-	case reflect.UnsafePointer:
-		err = fmt.Errorf("Unable to create codec for %v", t)
-		return
-	}
-	return
-}
-
-func getCodec(typ reflect.Type) (result *codec, err error) {
-	for typ.Kind() == reflect.Ptr {
-		typ = typ.Elem()
-	}
-	codecLock.RLock()
-	result, found := codecByType[typ]
-	codecLock.RUnlock()
-	if found {
-		return
-	}
-	if result, err = createCodec(typ); err != nil {
-		return
-	}
-	codecLock.Lock()
-	codecByType[typ] = result
-	codecLock.Unlock()
-	return
-}
-
-type Encoder struct {
-	writer io.Writer
-}
-
-func NewEncoder(w io.Writer) *Encoder {
-	return &Encoder{
-		writer: w,
-	}
-}
-
-func (self *Encoder) Encode(i interface{}) (err error) {
-	val := reflect.ValueOf(i)
-	c, err := getCodec(val.Type())
-	if err != nil {
-		return
-	}
-	return c.encode(self.writer, val)
-}
-
-type Decoder struct {
-	reader io.Reader
-}
-
-func NewDecoder(r io.Reader) *Decoder {
-	return &Decoder{
-		reader: r,
-	}
-}
-
-func (self *Decoder) Decode(i interface{}) (err error) {
-	val := reflect.ValueOf(i)
-	c, err := getCodec(val.Type())
-	if err != nil {
-		return
-	}
-	return c.decode(self.reader, val)
 }
 
 func Marshal(i interface{}) (result []byte, err error) {
