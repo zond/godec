@@ -1,4 +1,4 @@
 godec
 =====
 
-Like encoding/gob, but without the stream requirements.
+Like encoding/gob, but hopefully efficient even when encoding to blobs instead of streams.
