@@ -8,6 +8,112 @@ import (
 		"reflect"
 )
 
+{{range $index, $name := $all}}
+func encodeSliceOf{{gofilter $name}}(w io.Writer, v []{{$name}}) (err error) {
+	if err = encodeKind(w, reflect.Slice); err != nil {
+		return
+	}
+	if err = encodeint(w, len(v)); err != nil {
+		return
+	}
+	for _, el := range v {
+		if err = encode{{gofilter $name}}(w, el); err != nil {
+			return
+		}
+	}
+	return
+}
+
+func encodeSliceOf{{gofilter $name}}Ptr(w io.Writer, v []*{{$name}}) (err error) {
+	if err = encodeKind(w, reflect.Slice); err != nil {
+		return
+	}
+	if err = encodeint(w, len(v)); err != nil {
+		return
+	}
+	for _, el := range v {
+		if err = encode{{gofilter $name}}(w, *el); err != nil {
+			return
+		}
+	}
+	return
+}
+{{end}}
+
+{{range $index1, $name1 := $all}}{{range $index2, $name2 := $all}}
+func encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w io.Writer, v map[{{$name1}}]{{$name2}}) (err error) {
+	if err = encodeKind(w, reflect.Map); err != nil {
+		return
+	}
+	if err = encodeint(w, len(v)); err != nil {
+		return
+	}
+	for key, value := range v {
+		if err = encode{{gofilter $name1}}(w, key); err != nil {
+			return
+		}
+		if err = encode{{gofilter $name2}}(w, value); err != nil {
+			return
+		}
+	}
+	return
+}
+
+func encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(w io.Writer, v map[*{{$name1}}]{{$name2}}) (err error) {
+	if err = encodeKind(w, reflect.Map); err != nil {
+		return
+	}
+	if err = encodeint(w, len(v)); err != nil {
+		return
+	}
+	for key, value := range v {
+		if err = encode{{gofilter $name1}}(w, *key); err != nil {
+			return
+		}
+		if err = encode{{gofilter $name2}}(w, value); err != nil {
+			return
+		}
+	}
+	return
+}
+
+func encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(w io.Writer, v map[{{$name1}}]*{{$name2}}) (err error) {
+	if err = encodeKind(w, reflect.Map); err != nil {
+		return
+	}
+	if err = encodeint(w, len(v)); err != nil {
+		return
+	}
+	for key, value := range v {
+		if err = encode{{gofilter $name1}}(w, key); err != nil {
+			return
+		}
+		if err = encode{{gofilter $name2}}(w, *value); err != nil {
+			return
+		}
+	}
+	return
+}
+
+func encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w io.Writer, v map[*{{$name1}}]*{{$name2}}) (err error) {
+	if err = encodeKind(w, reflect.Map); err != nil {
+		return
+	}
+	if err = encodeint(w, len(v)); err != nil {
+		return
+	}
+	for key, value := range v {
+		if err = encode{{gofilter $name1}}(w, *key); err != nil {
+			return
+		}
+		if err = encode{{gofilter $name2}}(w, *value); err != nil {
+			return
+		}
+	}
+	return
+}
+{{end}}{{end}}
+
 func encodeinterface__(w io.Writer, i interface{}) (err error) {
 	switch v := i.(type) {
 
@@ -16,175 +122,31 @@ func encodeinterface__(w io.Writer, i interface{}) (err error) {
 	case {{$name}}:
 		return encode{{gofilter $name}}(w, v){{end}}{{range $index, $name := $all}}
 	case *{{$name}}:
-		return encode{{gofilter $name}}(w, *v){{end}}{{range $index, $name := $all}}
+		return encode{{gofilter $name}}(w, *v)
 	case []{{$name}}:
-		if err = encodeKind(w, reflect.Slice); err != nil {
-			return
-		}
-		if err = encodeint(w, len(v)); err != nil {
-			return
-		}
-		for _, el := range v {
-			if err = encode{{gofilter $name}}(w, el); err != nil {
-				return
-			}
-		}
+		return encodeSliceOf{{gofilter $name}}(w, v)
 	case *[]{{$name}}:
-		if err = encodeKind(w, reflect.Slice); err != nil {
-			return
-		}
-		if err = encodeint(w, len(*v)); err != nil {
-			return
-		}
-		for _, el := range *v {
-			if err = encode{{gofilter $name}}(w, el); err != nil {
-				return
-			}
-		}
+		return encodeSliceOf{{gofilter $name}}(w, *v)
 	case []*{{$name}}:
-		if err = encodeKind(w, reflect.Slice); err != nil {
-			return
-		}
-		if err = encodeint(w, len(v)); err != nil {
-			return
-		}
-		for _, el := range v {
-			if err = encode{{gofilter $name}}(w, *el); err != nil {
-				return
-			}
-		}
+		return encodeSliceOf{{gofilter $name}}Ptr(w, v)
 	case *[]*{{$name}}:
-		if err = encodeKind(w, reflect.Slice); err != nil {
-			return
-		}
-		if err = encodeint(w, len(*v)); err != nil {
-			return
-		}
-		for _, el := range *v {
-			if err = encode{{gofilter $name}}(w, *el); err != nil {
-				return
-			}
-		}{{end}}{{range $index1, $name1 := $all}}{{range $index2, $name2 := $all}}
+		return encodeSliceOf{{gofilter $name}}Ptr(w, *v){{end}}{{range $index1, $name1 := $all}}{{range $index2, $name2 := $all}}
 	case map[{{$name1}}]{{$name2}}:
-		if err = encodeKind(w, reflect.Map); err != nil {
-			return
-		}
-		if err = encodeint(w, len(v)); err != nil {
-			return
-		}
-		for key, value := range v {
-			if err = encode{{gofilter $name1}}(w, key); err != nil {
-				return
-			}
-			if err = encode{{gofilter $name2}}(w, value); err != nil {
-				return
-			}
-		}
+		return encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w, v)
 	case *map[{{$name1}}]{{$name2}}:
-		if err = encodeKind(w, reflect.Map); err != nil {
-			return
-		}
-		if err = encodeint(w, len(*v)); err != nil {
-			return
-		}
-		for key, value := range *v {
-			if err = encode{{gofilter $name1}}(w, key); err != nil {
-				return
-			}
-			if err = encode{{gofilter $name2}}(w, value); err != nil {
-				return
-			}
-		}
+		return encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w, *v)
 	case map[*{{$name1}}]{{$name2}}:
-		if err = encodeKind(w, reflect.Map); err != nil {
-			return
-		}
-		if err = encodeint(w, len(v)); err != nil {
-			return
-		}
-		for key, value := range v {
-			if err = encode{{gofilter $name1}}(w, *key); err != nil {
-				return
-			}
-			if err = encode{{gofilter $name2}}(w, value); err != nil {
-				return
-			}
-		}
+		return encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(w, v)
 	case *map[*{{$name1}}]{{$name2}}:
-		if err = encodeKind(w, reflect.Map); err != nil {
-			return
-		}
-		if err = encodeint(w, len(*v)); err != nil {
-			return
-		}
-		for key, value := range *v {
-			if err = encode{{gofilter $name1}}(w, *key); err != nil {
-				return
-			}
-			if err = encode{{gofilter $name2}}(w, value); err != nil {
-				return
-			}
-		}
+		return encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(w, *v)
 	case map[{{$name1}}]*{{$name2}}:
-		if err = encodeKind(w, reflect.Map); err != nil {
-			return
-		}
-		if err = encodeint(w, len(v)); err != nil {
-			return
-		}
-		for key, value := range v {
-			if err = encode{{gofilter $name1}}(w, key); err != nil {
-				return
-			}
-			if err = encode{{gofilter $name2}}(w, *value); err != nil {
-				return
-			}
-		}
+		return encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(w, v)
 	case *map[{{$name1}}]*{{$name2}}:
-		if err = encodeKind(w, reflect.Map); err != nil {
-			return
-		}
-		if err = encodeint(w, len(*v)); err != nil {
-			return
-		}
-		for key, value := range *v {
-			if err = encode{{gofilter $name1}}(w, key); err != nil {
-				return
-			}
-			if err = encode{{gofilter $name2}}(w, *value); err != nil {
-				return
-			}
-		}
+		return encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(w, *v)
 	case map[*{{$name1}}]*{{$name2}}:
-		if err = encodeKind(w, reflect.Map); err != nil {
-			return
-		}
-		if err = encodeint(w, len(v)); err != nil {
-			return
-		}
-		for key, value := range v {
-			if err = encode{{gofilter $name1}}(w, *key); err != nil {
-				return
-			}
-			if err = encode{{gofilter $name2}}(w, *value); err != nil {
-				return
-			}
-		}
+		return encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w, v)
 	case *map[*{{$name1}}]*{{$name2}}:
-		if err = encodeKind(w, reflect.Map); err != nil {
-			return
-		}
-		if err = encodeint(w, len(*v)); err != nil {
-			return
-		}
-		for key, value := range *v {
-			if err = encode{{gofilter $name1}}(w, *key); err != nil {
-				return
-			}
-			if err = encode{{gofilter $name2}}(w, *value); err != nil {
-				return
-			}
-		}{{end}}{{end}}
+		return encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w, *v){{end}}{{end}}
 	default:
 		return encodereflect_Value(w, reflect.ValueOf(i))
 	}
