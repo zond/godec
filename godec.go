@@ -33,7 +33,7 @@ type readerByteReader struct {
 }
 
 func (self readerByteReader) ReadByte() (result byte, err error) {
-	buf := make([]byte, 1)
+	buf := []byte{0}
 	if _, err = self.Reader.Read(buf); err != nil {
 		return
 	}
