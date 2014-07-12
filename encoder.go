@@ -84,13 +84,6 @@ func rawencodeint32(w io.Writer, u int32) (err error) {
 	return rawencodeint64(w, int64(u))
 }
 
-func rawencodeint64(w io.Writer, u int64) (err error) {
-	buf := make([]byte, binary.MaxVarintLen64)
-	bw := binary.PutVarint(buf, u)
-	_, err = w.Write(buf[:bw])
-	return
-}
-
 func rawencodeuintptr(w io.Writer, u uintptr) (err error) {
 	return rawencodeuint64(w, uint64(u))
 }
