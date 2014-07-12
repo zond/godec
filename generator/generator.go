@@ -9,7 +9,6 @@ import (
 )
 
 var primitives = []string{
-	"reflect.Value",
 	"string",
 	"bool",
 	"int",
@@ -29,9 +28,13 @@ var primitives = []string{
 	"complex128",
 }
 
+var base = append([]string{"reflect.Value"}, primitives...)
+var all = append([]string{"interface{}"}, base...)
+
 var context = map[string]interface{}{
 	"Primitives": primitives,
-	"All":        append([]string{"interface{}"}, primitives...),
+	"Base":       base,
+	"All":        all,
 }
 
 var goFileReg = regexp.MustCompile("(^[^.].*\\.go)\\.template$")

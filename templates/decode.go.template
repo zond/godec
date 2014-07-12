@@ -1,9 +1,114 @@
 package godec
 
+{{ $primitives := .Primitives }}
+{{ $base := .Base }}
+{{ $all := .All }}
+
 import (
-		"io"
+	"io"
+	"fmt"
+	"reflect"
 )
 
+// All slices are decoded by verifying that the encoded kind is reflect.Slice and that the element kind is the same, reading the length of the slice, and then the raw data.
+// But we skip []byte, because they are so darn simple to encode that we do it in another explicit function.
+{{range $index, $name := $all}}
+{{if ne $name "uint8"}}
+func decodeSliceOf{{gofilter $name}}(r io.Reader, v *[]{{$name}}) (err error) {
+	kind, err := decodeKind(r)
+	if err != nil {
+		return
+	}
+	if kind != reflect.Slice {
+		err = fmt.Errorf("Unable to decode %v into *{{$name}}", kind)
+		return
+	}
+	elkind, err := decodeKind(r)
+	if err != nil {
+		return
+	}
+	if elkind != {{gofilter $name}}Kind {
+		err = fmt.Errorf("Unable to decode %v into {{gofilter $name}}", elkind)
+		return
+	}
+	var l int
+	if err = rawdecodeint(r, &l); err != nil {
+		return
+	}
+	*v = make([]{{$name}}, l)
+	for index, _ := range *v {
+		if err = rawdecode{{gofilter $name}}(r, &((*v)[index])); err != nil {
+			return
+		}
+	}
+	return
+}
+{{end}}
+
+func decodeSliceOf{{gofilter $name}}Ptr(r io.Reader, v *[]*{{$name}}) (err error) {
+	kind, err := decodeKind(r)
+	if err != nil {
+		return
+	}
+	if kind != reflect.Slice {
+		err = fmt.Errorf("Unable to decode %v into *{{$name}}", kind)
+		return
+	}
+	elkind, err := decodeKind(r)
+	if err != nil {
+		return
+	}
+	if elkind != {{gofilter $name}}Kind {
+		err = fmt.Errorf("Unable to decode %v into {{gofilter $name}}", elkind)
+		return
+	}
+	var l int
+	if err = rawdecodeint(r, &l); err != nil {
+		return
+	}
+	*v = make([]*{{$name}}, l)
+	for index, _ := range *v {
+		var el {{$name}}
+		if err = rawdecode{{gofilter $name}}(r, &el); err != nil {
+			return
+		}
+		(*v)[index] = &el
+	}
+	return
+}
+{{end}}
+
+// All primitive types are parsed by verifying that the encoded kind makes sense, and then parsing their raw data
+{{range $index, $name := $primitives}}
+func decode{{gofilter $name}}(r io.Reader, v *{{$name}}) (err error) {
+	kind, err := decodeKind(r)
+	if err != nil {
+		return
+	}
+	if kind != {{gofilter $name}}Kind {
+		err = fmt.Errorf("Unable to decode %v into *{{$name}}", kind)
+		return
+	}
+	return rawdecode{{gofilter $name}}(r, v)
+}
+{{end}}
+
 func decodeinterface__(r io.Reader, i interface{}) (err error) {
+	switch v := i.(type) {
+
+	case nil:
+		err = fmt.Errorf("Unable to decode to nil pointer")
+{{range $index, $name := $all}}
+	case *{{$name}}:
+		return decode{{gofilter $name}}(r, v)
+{{end}}
+{{range $index, $name := $all}}
+	case *[]{{$name}}:
+		return decodeSliceOf{{gofilter $name}}(r, v)
+	case *[]*{{$name}}:
+		return decodeSliceOf{{gofilter $name}}Ptr(r, v)
+{{end}}
+  }
+	
 	return
 }
