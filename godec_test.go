@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	//	binc "github.com/ugorji/go/codec"
+	binc "github.com/ugorji/go/codec"
 )
 
 func encodeDecode(t *testing.T, src, dst interface{}) {
@@ -54,23 +54,25 @@ func runBench(b *testing.B, m marshaller) {
 	}
 }
 
-//var bh binc.BincHandle
-//
-//type bincMarshaller struct{}
-//
-//func (self bincMarshaller) Marshal(i interface{}) (b []byte, err error) {
-//	if err = binc.NewEncoderBytes(&b, &bh).Encode(i); err != nil {
-//		return
-//	}
-//	return
-//}
-//
-//func (self bincMarshaller) Unmarshal(b []byte, i interface{}) (err error) {
-//	if err = binc.NewDecoderBytes(b, &bh).Decode(i); err != nil {
-//		return
-//	}
-//	return
-//}
+var bh binc.BincHandle
+
+type bincMarshaller struct{}
+
+func (self bincMarshaller) Marshal(i interface{}) (b []byte, err error) {
+	buf := &bytes.Buffer{}
+	if err = binc.NewEncoder(buf, &bh).Encode(i); err != nil {
+		return
+	}
+	b = buf.Bytes()
+	return
+}
+
+func (self bincMarshaller) Unmarshal(b []byte, i interface{}) (err error) {
+	if err = binc.NewDecoder(bytes.NewBuffer(b), &bh).Decode(i); err != nil {
+		return
+	}
+	return
+}
 
 type godecMarshaller struct{}
 
@@ -100,9 +102,9 @@ func (self gobMarshaller) Unmarshal(b []byte, i interface{}) (err error) {
 	return
 }
 
-//func BenchmarkBincStringSlice(b *testing.B) {
-//	runBench(b, bincMarshaller{})
-//}
+func BenchmarkBincStringSlice(b *testing.B) {
+	runBench(b, bincMarshaller{})
+}
 
 func BenchmarkGobStringSlice(b *testing.B) {
 	runBench(b, gobMarshaller{})
