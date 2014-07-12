@@ -1,7 +1,7 @@
 package godec
 
 import (
-	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -159,8 +159,15 @@ func rawdecodeint32(r io.Reader, i *int32) (err error) {
 	return
 }
 
-func rawdecodeint64(r io.Reader, i *int64) (err error) {
-	*i, err = binary.ReadVarint(readerByteReader{r})
+func rawdecodeint64(r io.Reader, x *int64) (err error) {
+	var ux uint64
+	if err = rawdecodeuint64(r, &ux); err != nil {
+		return
+	}
+	*x = int64(ux >> 1)
+	if ux&1 != 0 {
+		*x = ^*x
+	}
 	return
 }
 
@@ -209,8 +216,30 @@ func rawdecodeuintptr(r io.Reader, u *uintptr) (err error) {
 	return
 }
 
-func rawdecodeuint64(r io.Reader, u *uint64) (err error) {
-	*u, err = binary.ReadUvarint(readerByteReader{r})
+var overflow = errors.New("binary: varint overflows a 64-bit integer")
+
+func rawdecodeuint64(r io.Reader, x *uint64) (err error) {
+	*x = 0
+	var s uint
+	buf := []byte{0}
+	for i := 0; ; i++ {
+		if _, err = r.Read(buf); err != nil {
+			return
+		}
+		if err != nil {
+			return
+		}
+		if buf[0] < 0x80 {
+			if i > 9 || i == 9 && buf[0] > 1 {
+				err = overflow
+				return
+			}
+			*x = *x | uint64(buf[0])<<s
+			return
+		}
+		*x = *x | uint64(buf[0]&0x7f)<<s
+		s += 7
+	}
 	return
 }
 

@@ -7,17 +7,7 @@ package godec
 import (
 		"io"
 		"reflect"
-		"encoding/binary"
 )
-
-func rawencodeint64(w io.Writer, u int64) (err error) {
-	buf := []byte{{{range .MaxVarintLen64}}
-		0,{{end}}
-	}
-	bw := binary.PutVarint(buf, u)
-	_, err = w.Write(buf[:bw])
-	return
-}
 
 // All slices are encoded by encoding reflect.Slice, the element kind, the length, and then all elements.
 // If the elements are pointers, the element kind is bitwise ORed with reflect.Ptr.

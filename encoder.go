@@ -1,7 +1,6 @@
 package godec
 
 import (
-	"encoding/binary"
 	"io"
 	"math"
 	"reflect"
@@ -104,10 +103,24 @@ func rawencodeuint32(w io.Writer, u uint32) (err error) {
 	return rawencodeuint64(w, uint64(u))
 }
 
+func rawencodeint64(w io.Writer, i int64) (err error) {
+	ux := uint64(i) << 1
+	if i < 0 {
+		ux = ^ux
+	}
+	return rawencodeuint64(w, ux)
+}
+
 func rawencodeuint64(w io.Writer, u uint64) (err error) {
-	buf := make([]byte, binary.MaxVarintLen64)
-	bw := binary.PutUvarint(buf, u)
-	_, err = w.Write(buf[:bw])
+	for u >= 0x80 {
+		if _, err = w.Write([]byte{byte(u) | 0x80}); err != nil {
+			return
+		}
+		u >>= 7
+	}
+	if _, err = w.Write([]byte{byte(u)}); err != nil {
+		return
+	}
 	return
 }
 

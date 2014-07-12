@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"math/rand"
 	"reflect"
 	"testing"
 
@@ -169,4 +170,40 @@ func TestEncodeDecodeArrays(t *testing.T) {
 	var aI32 [3]int32
 	encodeDecode(t, [3]int32{33, 44, 56}, &aI32)
 	encodeDecode(t, [3]int32{1, 2, 3}, &aI32)
+}
+
+func TestEncodeDecodeUint64(t *testing.T) {
+	for i := 0; i < 1000; i++ {
+		buf := &bytes.Buffer{}
+		i1 := uint64(rand.Int63())
+		if err := rawencodeuint64(buf, i1); err != nil {
+			t.Fatalf("%v", err)
+		}
+		var i2 uint64
+		by := buf.Bytes()
+		if err := rawdecodeuint64(buf, &i2); err != nil {
+			t.Fatalf("%v", err)
+		}
+		if i1 != i2 {
+			t.Fatalf("Encoded %v to %v, and decoded that to %v", i1, by, i2)
+		}
+	}
+}
+
+func TestEncodeDecodeInt64(t *testing.T) {
+	for i := 0; i < 1000; i++ {
+		buf := &bytes.Buffer{}
+		i1 := rand.Int63()
+		if err := rawencodeint64(buf, i1); err != nil {
+			t.Fatalf("%v", err)
+		}
+		var i2 int64
+		by := buf.Bytes()
+		if err := rawdecodeint64(buf, &i2); err != nil {
+			t.Fatalf("%v", err)
+		}
+		if i1 != i2 {
+			t.Fatalf("Encoded %v to %v, and decoded that to %v", i1, by, i2)
+		}
+	}
 }
