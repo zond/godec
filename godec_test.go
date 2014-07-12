@@ -49,6 +49,9 @@ func runBench(b *testing.B, m marshaller) {
 		if len(res) == 0 {
 			b.Fatalf("Zero marshalling?")
 		}
+		if _, ok := m.(bincMarshaller); ok {
+			target = make([]string, len(bigSlice))
+		}
 		if err = m.Unmarshal(res, &target); err != nil {
 			b.Fatalf("%v", err)
 		}

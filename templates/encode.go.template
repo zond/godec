@@ -9,6 +9,7 @@ import (
 		"reflect"
 )
 
+
 // All slices are encoded by encoding reflect.Slice, the element kind, the length, and then all elements.
 // If the elements are pointers, the element kind is bitwise ORed with reflect.Ptr.
 // But we skip []byte, because they are so darn simple to encode that we do it in another explicit function.
