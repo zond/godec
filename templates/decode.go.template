@@ -31,11 +31,11 @@ func decodeSliceOf{{gofilter $name}}(r io.Reader, v *[]{{$name}}) (err error) {
 		err = fmt.Errorf("Unable to decode %v into {{gofilter $name}}", elkind)
 		return
 	}
-	var l int
-	if err = rawdecodeint(r, &l); err != nil {
+	var l uint
+	if err = rawdecodeuint(r, &l); err != nil {
 		return
 	}
-	*v = make([]{{$name}}, l)
+	*v = make([]{{$name}}, int(l))
 	for index, _ := range *v {
 		if err = rawdecode{{gofilter $name}}(r, &((*v)[index])); err != nil {
 			return
@@ -62,11 +62,11 @@ func decodeSliceOf{{gofilter $name}}Ptr(r io.Reader, v *[]*{{$name}}) (err error
 		err = fmt.Errorf("Unable to decode %v into {{gofilter $name}}", elkind)
 		return
 	}
-	var l int
-	if err = rawdecodeint(r, &l); err != nil {
+	var l uint
+	if err = rawdecodeuint(r, &l); err != nil {
 		return
 	}
-	*v = make([]*{{$name}}, l)
+	*v = make([]*{{$name}}, int(l))
 	for index, _ := range *v {
 		var el {{$name}}
 		if err = rawdecode{{gofilter $name}}(r, &el); err != nil {

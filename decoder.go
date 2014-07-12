@@ -53,12 +53,12 @@ func decodeSliceOfuint8(r io.Reader, v *[]uint8) (err error) {
 		err = fmt.Errorf("Unable to decode %v into uint8", elkind)
 		return
 	}
-	var l int
-	if err = rawdecodeint(r, &l); err != nil {
+	var l uint
+	if err = rawdecodeuint(r, &l); err != nil {
 		return
 	}
-	*v = make([]uint8, l)
-	_, err = io.ReadAtLeast(r, *v, l)
+	*v = make([]uint8, int(l))
+	_, err = io.ReadAtLeast(r, *v, int(l))
 	return
 }
 
@@ -244,8 +244,8 @@ func rawdecodeuint64(r io.Reader, x *uint64) (err error) {
 }
 
 func rawdecodestring(r io.Reader, s *string) (err error) {
-	var size int
-	if err = rawdecodeint(r, &size); err != nil {
+	var size uint
+	if err = rawdecodeuint(r, &size); err != nil {
 		return
 	}
 	b := make([]byte, int(size))

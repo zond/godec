@@ -22,7 +22,7 @@ func encodeSliceOf{{gofilter $name}}(w io.Writer, v []{{$name}}) (err error) {
 	if err = encodeKind(w, {{gofilter $name}}Kind); err != nil {
 		return
 	}
-	if err = rawencodeint(w, len(v)); err != nil {
+	if err = rawencodeuint(w, uint(len(v))); err != nil {
 		return
 	}
 	for _, el := range v {
@@ -41,7 +41,7 @@ func encodeSliceOf{{gofilter $name}}Ptr(w io.Writer, v []*{{$name}}) (err error)
 	if err = encodeKind(w, {{gofilter $name}}Kind | reflect.Ptr); err != nil {
 		return
 	}
-	if err = rawencodeint(w, len(v)); err != nil {
+	if err = rawencodeuint(w, uint(len(v))); err != nil {
 		return
 	}
 	for _, el := range v {
@@ -66,7 +66,7 @@ func encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w io.Writer, v map[{{$n
 	if err = encodeKind(w, {{gofilter $name2}}Kind); err != nil {
 		return
 	}
-	if err = rawencodeint(w, len(v)); err != nil {
+	if err = rawencodeuint(w, uint(len(v))); err != nil {
 		return
 	}
 	for key, value := range v {
@@ -90,7 +90,7 @@ func encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(w io.Writer, v map[*
 	if err = encodeKind(w, {{gofilter $name2}}Kind); err != nil {
 		return
 	}
-	if err = rawencodeint(w, len(v)); err != nil {
+	if err = rawencodeuint(w, uint(len(v))); err != nil {
 		return
 	}
 	for key, value := range v {
@@ -114,7 +114,7 @@ func encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(w io.Writer, v map[{
 	if err = encodeKind(w, {{gofilter $name2}}Kind | reflect.Ptr); err != nil {
 		return
 	}
-	if err = rawencodeint(w, len(v)); err != nil {
+	if err = rawencodeuint(w, uint(len(v))); err != nil {
 		return
 	}
 	for key, value := range v {
@@ -138,7 +138,7 @@ func encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w io.Writer, v ma
 	if err = encodeKind(w, {{gofilter $name2}}Kind | reflect.Ptr); err != nil {
 		return
 	}
-	if err = rawencodeint(w, len(v)); err != nil {
+	if err = rawencodeuint(w, uint(len(v))); err != nil {
 		return
 	}
 	for key, value := range v {

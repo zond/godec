@@ -44,7 +44,7 @@ func encodeSliceOfuint8(w io.Writer, v []uint8) (err error) {
 	if err = encodeKind(w, uint8Kind); err != nil {
 		return
 	}
-	if err = rawencodeint(w, len(v)); err != nil {
+	if err = rawencodeuint(w, uint(len(v))); err != nil {
 		return
 	}
 	_, err = w.Write(v)
@@ -139,7 +139,7 @@ func rawencodecomplex128(w io.Writer, c complex128) (err error) {
 }
 
 func rawencodestring(w io.Writer, s string) (err error) {
-	if err = rawencodeint(w, len(s)); err != nil {
+	if err = rawencodeuint(w, uint(len(s))); err != nil {
 		return
 	}
 	_, err = io.WriteString(w, s)
