@@ -31,7 +31,7 @@ func decodeKind(r io.Reader) (result reflect.Kind, err error) {
 	return
 }
 
-func decodereflect_Value(r io.Reader, v *reflect.Value) (err error) {
+func decodereflect_Value(r io.Reader, v reflect.Value) (err error) {
 	return
 }
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
 	"flag"
 	"os"
 	"path/filepath"
@@ -29,21 +28,11 @@ var primitives = []string{
 	"complex128",
 }
 
-var base = append([]string{"reflect.Value"}, primitives...)
-var all = append([]string{"interface{}"}, base...)
+var all = append([]string{"interface{}"}, primitives...)
 
 var context = map[string]interface{}{
 	"Primitives": primitives,
-	"Base":       base,
 	"All":        all,
-}
-
-func init() {
-	count := []int{}
-	for i := 0; i < binary.MaxVarintLen64; i++ {
-		count = append(count, i)
-	}
-	context["MaxVarintLen64"] = count
 }
 
 var goFileReg = regexp.MustCompile("(^[^.].*\\.go)\\.template$")

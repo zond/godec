@@ -166,15 +166,6 @@ func TestEncodeDecodeSlices(t *testing.T) {
 	encodeDecode(t, []int32{1, 2, 3}, &sI32)
 }
 
-func TestEncodeDecodeArrays(t *testing.T) {
-	var aS [2]string
-	encodeDecode(t, [2]string{"hehu", "hepp"}, &aS)
-	encodeDecode(t, [2]string{"kala", "bapa"}, &aS)
-	var aI32 [3]int32
-	encodeDecode(t, [3]int32{33, 44, 56}, &aI32)
-	encodeDecode(t, [3]int32{1, 2, 3}, &aI32)
-}
-
 func TestEncodeDecodeUint64(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		buf := &bytes.Buffer{}
