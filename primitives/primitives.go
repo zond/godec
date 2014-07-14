@@ -95,21 +95,6 @@ func Rawencodereflect_Value(w io.Writer, v reflect.Value) (err error) {
 	return Encodereflect_Value(w, v)
 }
 
-// The special case for byte slices is here.
-func EncodeSliceOfuint8(w io.Writer, v []uint8) (err error) {
-	if err = EncodeKind(w, reflect.Slice); err != nil {
-		return
-	}
-	if err = EncodeKind(w, uint8Kind); err != nil {
-		return
-	}
-	if err = Rawencodeuint(w, uint(len(v))); err != nil {
-		return
-	}
-	_, err = w.Write(v)
-	return
-}
-
 func Rawencodebool(w io.Writer, b bool) (err error) {
 	if b {
 		return Rawencodeuint64(w, 1)
@@ -197,14 +182,6 @@ func Rawencodecomplex128(w io.Writer, c complex128) (err error) {
 	return Rawencodefloat64(w, imag(c))
 }
 
-func Rawencodestring(w io.Writer, s string) (err error) {
-	if err = Rawencodeuint(w, uint(len(s))); err != nil {
-		return
-	}
-	_, err = io.WriteString(w, s)
-	return
-}
-
 func DecodeKind(r DecodeReader) (result reflect.Kind, err error) {
 	var u uint64
 	if err = Rawdecodeuint64(r, &u); err != nil {
@@ -218,22 +195,47 @@ func Decodereflect_Value(r DecodeReader, v reflect.Value) (err error) {
 	return
 }
 
-// The special case for byte slices is here.
+func Rawencodestring(w io.Writer, s string) (err error) {
+	if err = Rawencodeuint(w, uint(len(s))); err != nil {
+		return
+	}
+	_, err = io.WriteString(w, s)
+	return
+}
+
+// The special case for byte slices is here, and we treat byte slices exactly like strings.
+func EncodeSliceOfuint8(w io.Writer, v []uint8) (err error) {
+	if err = EncodeKind(w, stringKind); err != nil {
+		return
+	}
+	if err = Rawencodeuint(w, uint(len(v))); err != nil {
+		return
+	}
+	_, err = w.Write(v)
+	return
+}
+
+func Rawdecodestring(r DecodeReader, s *string) (err error) {
+	var size uint
+	if err = Rawdecodeuint(r, &size); err != nil {
+		return
+	}
+	b, err := r.ReadBytes(int(size))
+	if err != nil {
+		return
+	}
+	*s = string(b)
+	return
+}
+
+// The special case for byte slices is here, and we treat byte slices exactly like strings.
 func DecodeSliceOfuint8(r DecodeReader, v *[]uint8) (err error) {
 	kind, err := DecodeKind(r)
 	if err != nil {
 		return
 	}
-	if kind != reflect.Slice {
+	if kind != stringKind {
 		err = fmt.Errorf("Unable to decode %v into *[]uint8", kind)
-		return
-	}
-	elkind, err := DecodeKind(r)
-	if err != nil {
-		return
-	}
-	if elkind != uint8Kind {
-		err = fmt.Errorf("Unable to decode %v into uint8", elkind)
 		return
 	}
 	var l uint
@@ -422,18 +424,5 @@ func Rawdecodeuint64(r DecodeReader, x *uint64) (err error) {
 		*x = *x | uint64(b&0x7f)<<s
 		s += 7
 	}
-	return
-}
-
-func Rawdecodestring(r DecodeReader, s *string) (err error) {
-	var size uint
-	if err = Rawdecodeuint(r, &size); err != nil {
-		return
-	}
-	b, err := r.ReadBytes(int(size))
-	if err != nil {
-		return
-	}
-	*s = string(b)
 	return
 }
