@@ -2,7 +2,6 @@ package godec
 
 import (
 	"bytes"
-	"io"
 	"reflect"
 )
 
@@ -28,28 +27,6 @@ const (
 	complex128Kind    = reflect.Complex128
 )
 
-type readerByteReader struct {
-	io.Reader
-}
-
-func (self readerByteReader) ReadByte() (result byte, err error) {
-	buf := []byte{0}
-	if _, err = self.Reader.Read(buf); err != nil {
-		return
-	}
-	result = buf[0]
-	return
-}
-
-func errchain(errs ...error) (err error) {
-	for _, err = range errs {
-		if err != nil {
-			return
-		}
-	}
-	return
-}
-
 func Marshal(i interface{}) (result []byte, err error) {
 	buf := &bytes.Buffer{}
 	enc := NewEncoder(buf)
@@ -61,8 +38,7 @@ func Marshal(i interface{}) (result []byte, err error) {
 }
 
 func Unmarshal(b []byte, i interface{}) (err error) {
-	buf := bytes.NewBuffer(b)
-	dec := NewDecoder(buf)
+	dec := NewDecoder(&BytesDecodeReader{Buf: b})
 	if err = dec.Decode(i); err != nil {
 		return
 	}

@@ -8,11 +8,60 @@ import (
 	"reflect"
 )
 
-type Decoder struct {
-	reader io.Reader
+type DecodeReader interface {
+	io.ByteReader
+	ReadBytes(n int) ([]byte, error)
 }
 
-func NewDecoder(r io.Reader) *Decoder {
+type IODecodeReader struct {
+	Reader io.Reader
+}
+
+func (self IODecodeReader) ReadByte() (result byte, err error) {
+	buf := []byte{0}
+	if _, err = self.Reader.Read(buf); err != nil {
+		return
+	}
+	result = buf[0]
+	return
+}
+
+func (self IODecodeReader) ReadBytes(n int) (result []byte, err error) {
+	result = make([]byte, n)
+	_, err = io.ReadAtLeast(self.Reader, result, n)
+	return
+}
+
+type BytesDecodeReader struct {
+	Buf []byte
+	Pos int
+}
+
+func (self *BytesDecodeReader) ReadByte() (result byte, err error) {
+	if self.Pos >= len(self.Buf) {
+		err = io.EOF
+		return
+	}
+	result = self.Buf[self.Pos]
+	self.Pos++
+	return
+}
+
+func (self *BytesDecodeReader) ReadBytes(n int) (result []byte, err error) {
+	if self.Pos+n > len(self.Buf) {
+		err = io.EOF
+		return
+	}
+	result = self.Buf[self.Pos : self.Pos+n]
+	self.Pos += n
+	return
+}
+
+type Decoder struct {
+	reader DecodeReader
+}
+
+func NewDecoder(r DecodeReader) *Decoder {
 	return &Decoder{
 		reader: r,
 	}
@@ -22,7 +71,7 @@ func (self *Decoder) Decode(i interface{}) (err error) {
 	return decodeinterface__(self.reader, i)
 }
 
-func decodeKind(r io.Reader) (result reflect.Kind, err error) {
+func decodeKind(r DecodeReader) (result reflect.Kind, err error) {
 	var u uint64
 	if err = rawdecodeuint64(r, &u); err != nil {
 		return
@@ -31,12 +80,12 @@ func decodeKind(r io.Reader) (result reflect.Kind, err error) {
 	return
 }
 
-func decodereflect_Value(r io.Reader, v reflect.Value) (err error) {
+func decodereflect_Value(r DecodeReader, v reflect.Value) (err error) {
 	return
 }
 
 // The special case for byte slices is here.
-func decodeSliceOfuint8(r io.Reader, v *[]uint8) (err error) {
+func decodeSliceOfuint8(r DecodeReader, v *[]uint8) (err error) {
 	kind, err := decodeKind(r)
 	if err != nil {
 		return
@@ -57,20 +106,19 @@ func decodeSliceOfuint8(r io.Reader, v *[]uint8) (err error) {
 	if err = rawdecodeuint(r, &l); err != nil {
 		return
 	}
-	*v = make([]uint8, int(l))
-	_, err = io.ReadAtLeast(r, *v, int(l))
+	*v, err = r.ReadBytes(int(l))
 	return
 }
 
-func rawdecodeinterface__(r io.Reader, i *interface{}) (err error) {
+func rawdecodeinterface__(r DecodeReader, i *interface{}) (err error) {
 	return
 }
 
-func rawdecodereflect_Value(r io.Reader, v *reflect.Value) (err error) {
+func rawdecodereflect_Value(r DecodeReader, v *reflect.Value) (err error) {
 	return
 }
 
-func rawdecodebool(r io.Reader, b *bool) (err error) {
+func rawdecodebool(r DecodeReader, b *bool) (err error) {
 	var u uint64
 	if err = rawdecodeuint64(r, &u); err != nil {
 		return
@@ -79,7 +127,7 @@ func rawdecodebool(r io.Reader, b *bool) (err error) {
 	return
 }
 
-func rawdecodecomplex128(r io.Reader, c *complex128) (err error) {
+func rawdecodecomplex128(r DecodeReader, c *complex128) (err error) {
 	var re float64
 	if err = rawdecodefloat64(r, &re); err != nil {
 		return
@@ -92,7 +140,7 @@ func rawdecodecomplex128(r io.Reader, c *complex128) (err error) {
 	return
 }
 
-func rawdecodecomplex64(r io.Reader, c *complex64) (err error) {
+func rawdecodecomplex64(r DecodeReader, c *complex64) (err error) {
 	var re float64
 	if err = rawdecodefloat64(r, &re); err != nil {
 		return
@@ -105,7 +153,7 @@ func rawdecodecomplex64(r io.Reader, c *complex64) (err error) {
 	return
 }
 
-func rawdecodefloat32(r io.Reader, f *float32) (err error) {
+func rawdecodefloat32(r DecodeReader, f *float32) (err error) {
 	var u uint64
 	if err = rawdecodeuint64(r, &u); err != nil {
 		return
@@ -114,7 +162,7 @@ func rawdecodefloat32(r io.Reader, f *float32) (err error) {
 	return
 }
 
-func rawdecodefloat64(r io.Reader, f *float64) (err error) {
+func rawdecodefloat64(r DecodeReader, f *float64) (err error) {
 	var u uint64
 	if err = rawdecodeuint64(r, &u); err != nil {
 		return
@@ -123,7 +171,7 @@ func rawdecodefloat64(r io.Reader, f *float64) (err error) {
 	return
 }
 
-func rawdecodeint(r io.Reader, i *int) (err error) {
+func rawdecodeint(r DecodeReader, i *int) (err error) {
 	var i64 int64
 	if err = rawdecodeint64(r, &i64); err != nil {
 		return
@@ -132,7 +180,7 @@ func rawdecodeint(r io.Reader, i *int) (err error) {
 	return
 }
 
-func rawdecodeint8(r io.Reader, i *int8) (err error) {
+func rawdecodeint8(r DecodeReader, i *int8) (err error) {
 	var i64 int64
 	if err = rawdecodeint64(r, &i64); err != nil {
 		return
@@ -141,7 +189,7 @@ func rawdecodeint8(r io.Reader, i *int8) (err error) {
 	return
 }
 
-func rawdecodeint16(r io.Reader, i *int16) (err error) {
+func rawdecodeint16(r DecodeReader, i *int16) (err error) {
 	var i64 int64
 	if err = rawdecodeint64(r, &i64); err != nil {
 		return
@@ -150,7 +198,7 @@ func rawdecodeint16(r io.Reader, i *int16) (err error) {
 	return
 }
 
-func rawdecodeint32(r io.Reader, i *int32) (err error) {
+func rawdecodeint32(r DecodeReader, i *int32) (err error) {
 	var i64 int64
 	if err = rawdecodeint64(r, &i64); err != nil {
 		return
@@ -159,7 +207,7 @@ func rawdecodeint32(r io.Reader, i *int32) (err error) {
 	return
 }
 
-func rawdecodeint64(r io.Reader, x *int64) (err error) {
+func rawdecodeint64(r DecodeReader, x *int64) (err error) {
 	var ux uint64
 	if err = rawdecodeuint64(r, &ux); err != nil {
 		return
@@ -171,7 +219,7 @@ func rawdecodeint64(r io.Reader, x *int64) (err error) {
 	return
 }
 
-func rawdecodeuint(r io.Reader, u *uint) (err error) {
+func rawdecodeuint(r DecodeReader, u *uint) (err error) {
 	var u64 uint64
 	if err = rawdecodeuint64(r, &u64); err != nil {
 		return
@@ -180,7 +228,7 @@ func rawdecodeuint(r io.Reader, u *uint) (err error) {
 	return
 }
 
-func rawdecodeuint8(r io.Reader, u *uint8) (err error) {
+func rawdecodeuint8(r DecodeReader, u *uint8) (err error) {
 	var u64 uint64
 	if err = rawdecodeuint64(r, &u64); err != nil {
 		return
@@ -189,7 +237,7 @@ func rawdecodeuint8(r io.Reader, u *uint8) (err error) {
 	return
 }
 
-func rawdecodeuint16(r io.Reader, u *uint16) (err error) {
+func rawdecodeuint16(r DecodeReader, u *uint16) (err error) {
 	var u64 uint64
 	if err = rawdecodeuint64(r, &u64); err != nil {
 		return
@@ -198,7 +246,7 @@ func rawdecodeuint16(r io.Reader, u *uint16) (err error) {
 	return
 }
 
-func rawdecodeuint32(r io.Reader, u *uint32) (err error) {
+func rawdecodeuint32(r DecodeReader, u *uint32) (err error) {
 	var u64 uint64
 	if err = rawdecodeuint64(r, &u64); err != nil {
 		return
@@ -207,7 +255,7 @@ func rawdecodeuint32(r io.Reader, u *uint32) (err error) {
 	return
 }
 
-func rawdecodeuintptr(r io.Reader, u *uintptr) (err error) {
+func rawdecodeuintptr(r DecodeReader, u *uintptr) (err error) {
 	var u64 uint64
 	if err = rawdecodeuint64(r, &u64); err != nil {
 		return
@@ -218,38 +266,38 @@ func rawdecodeuintptr(r io.Reader, u *uintptr) (err error) {
 
 var overflow = errors.New("binary: varint overflows a 64-bit integer")
 
-func rawdecodeuint64(r io.Reader, x *uint64) (err error) {
+func rawdecodeuint64(r DecodeReader, x *uint64) (err error) {
 	*x = 0
 	var s uint
-	buf := []byte{0}
+	var b byte
 	for i := 0; ; i++ {
-		if _, err = r.Read(buf); err != nil {
+		if b, err = r.ReadByte(); err != nil {
 			return
 		}
 		if err != nil {
 			return
 		}
-		if buf[0] < 0x80 {
-			if i > 9 || i == 9 && buf[0] > 1 {
+		if b < 0x80 {
+			if i > 9 || i == 9 && b > 1 {
 				err = overflow
 				return
 			}
-			*x = *x | uint64(buf[0])<<s
+			*x = *x | uint64(b)<<s
 			return
 		}
-		*x = *x | uint64(buf[0]&0x7f)<<s
+		*x = *x | uint64(b&0x7f)<<s
 		s += 7
 	}
 	return
 }
 
-func rawdecodestring(r io.Reader, s *string) (err error) {
+func rawdecodestring(r DecodeReader, s *string) (err error) {
 	var size uint
 	if err = rawdecodeuint(r, &size); err != nil {
 		return
 	}
-	b := make([]byte, int(size))
-	if _, err = io.ReadAtLeast(r, b, len(b)); err != nil {
+	b, err := r.ReadBytes(int(size))
+	if err != nil {
 		return
 	}
 	*s = string(b)

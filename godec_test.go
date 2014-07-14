@@ -32,14 +32,43 @@ type marshaller interface {
 }
 
 var bigSlice = []string{}
+var bigMap = map[string]string{}
 
 func init() {
 	for i := 0; i < 1000; i++ {
-		bigSlice = append(bigSlice, fmt.Sprintf("String nr %v", i))
+		s := fmt.Sprintf("String nr %v", i)
+		bigSlice = append(bigSlice, s)
+		bigMap[s] = s
 	}
 }
 
-func runBench(b *testing.B, m marshaller) {
+func runBenchMap(b *testing.B, m marshaller) {
+	target := map[string]string{}
+	for i := 0; i < b.N; i++ {
+		res, err := m.Marshal(bigMap)
+		if err != nil {
+			b.Fatalf("%v", err)
+		}
+		if len(res) == 0 {
+			b.Fatalf("Zero marshalling?")
+		}
+		if err = m.Unmarshal(res, &target); err != nil {
+			b.Fatalf("%v", err)
+		}
+		b.StopTimer()
+		if len(bigMap) != len(target) {
+			b.Fatalf("Incorrect unmarshal")
+		}
+		for k, v := range bigMap {
+			if v != target[k] {
+				b.Fatalf("Incorrect unmarshal")
+			}
+		}
+		b.StartTimer()
+	}
+}
+
+func runBenchSlice(b *testing.B, m marshaller) {
 	target := []string{}
 	for i := 0; i < b.N; i++ {
 		res, err := m.Marshal(bigSlice)
@@ -49,12 +78,19 @@ func runBench(b *testing.B, m marshaller) {
 		if len(res) == 0 {
 			b.Fatalf("Zero marshalling?")
 		}
-		if _, ok := m.(bincMarshaller); ok {
-			target = make([]string, len(bigSlice))
-		}
 		if err = m.Unmarshal(res, &target); err != nil {
 			b.Fatalf("%v", err)
 		}
+		b.StopTimer()
+		if len(target) != len(bigSlice) {
+			b.Fatalf("Incorrect unmarshal")
+		}
+		for i, v := range target {
+			if bigSlice[i] != v {
+				b.Fatalf("Incorrect unmarshal")
+			}
+		}
+		b.StartTimer()
 	}
 }
 
@@ -63,16 +99,14 @@ var bh binc.BincHandle
 type bincMarshaller struct{}
 
 func (self bincMarshaller) Marshal(i interface{}) (b []byte, err error) {
-	buf := &bytes.Buffer{}
-	if err = binc.NewEncoder(buf, &bh).Encode(i); err != nil {
+	if err = binc.NewEncoderBytes(&b, &bh).Encode(i); err != nil {
 		return
 	}
-	b = buf.Bytes()
 	return
 }
 
 func (self bincMarshaller) Unmarshal(b []byte, i interface{}) (err error) {
-	if err = binc.NewDecoder(bytes.NewBuffer(b), &bh).Decode(i); err != nil {
+	if err = binc.NewDecoderBytes(b, &bh).Decode(i); err != nil {
 		return
 	}
 	return
@@ -106,16 +140,28 @@ func (self gobMarshaller) Unmarshal(b []byte, i interface{}) (err error) {
 	return
 }
 
+func BenchmarkBincStringMap(b *testing.B) {
+	runBenchMap(b, bincMarshaller{})
+}
+
+func BenchmarkGobStringMap(b *testing.B) {
+	runBenchMap(b, gobMarshaller{})
+}
+
+func BenchmarkGodecStringMap(b *testing.B) {
+	runBenchMap(b, godecMarshaller{})
+}
+
 func BenchmarkBincStringSlice(b *testing.B) {
-	runBench(b, bincMarshaller{})
+	runBenchSlice(b, bincMarshaller{})
 }
 
 func BenchmarkGobStringSlice(b *testing.B) {
-	runBench(b, gobMarshaller{})
+	runBenchSlice(b, gobMarshaller{})
 }
 
 func BenchmarkGodecStringSlice(b *testing.B) {
-	runBench(b, godecMarshaller{})
+	runBenchSlice(b, godecMarshaller{})
 }
 
 func TestEncodeDecodePrimitiveTypes(t *testing.T) {
@@ -175,7 +221,7 @@ func TestEncodeDecodeUint64(t *testing.T) {
 		}
 		var i2 uint64
 		by := buf.Bytes()
-		if err := rawdecodeuint64(buf, &i2); err != nil {
+		if err := rawdecodeuint64(IODecodeReader{buf}, &i2); err != nil {
 			t.Fatalf("%v", err)
 		}
 		if i1 != i2 {
@@ -193,7 +239,7 @@ func TestEncodeDecodeInt64(t *testing.T) {
 		}
 		var i2 int64
 		by := buf.Bytes()
-		if err := rawdecodeint64(buf, &i2); err != nil {
+		if err := rawdecodeint64(IODecodeReader{buf}, &i2); err != nil {
 			t.Fatalf("%v", err)
 		}
 		if i1 != i2 {
