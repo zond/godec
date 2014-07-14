@@ -23,7 +23,7 @@ _testmain.go
 *.test
 .*.swp
 
-encode.go
-decode.go
+primitives/encode.go
+primitives/decode.go
 cpuprofile
 stringslice

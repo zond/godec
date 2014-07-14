@@ -1,0 +1,213 @@
+package primitives
+
+{{ $primitives := .Primitives }}
+{{ $all := .All }}
+
+import (
+		"io"
+		"reflect"
+)
+
+
+// All slices are encoded by encoding reflect.Slice, the element kind, the length, and then all elements.
+// If the elements are pointers, the element kind is bitwise ORed with reflect.Ptr.
+// But we skip []byte, because they are so darn simple to encode that we do it in another explicit function.
+{{range $index, $name := $all}}
+{{if ne $name "uint8"}}
+func EncodeSliceOf{{gofilter $name}}(w io.Writer, v []{{$name}}) (err error) {
+	if err = EncodeKind(w, reflect.Slice); err != nil {
+		return
+	}
+	if err = EncodeKind(w, {{gofilter $name}}Kind); err != nil {
+		return
+	}
+	if err = Rawencodeuint(w, uint(len(v))); err != nil {
+		return
+	}
+	for _, el := range v {
+		if err = Rawencode{{gofilter $name}}(w, el); err != nil {
+			return
+		}
+	}
+	return
+}
+{{end}}
+
+func EncodeSliceOf{{gofilter $name}}Ptr(w io.Writer, v []*{{$name}}) (err error) {
+	if err = EncodeKind(w, reflect.Slice); err != nil {
+		return
+	}
+	if err = EncodeKind(w, {{gofilter $name}}Kind); err != nil {
+		return
+	}
+	if err = Rawencodeuint(w, uint(len(v))); err != nil {
+		return
+	}
+	for _, el := range v {
+		if err = Rawencode{{gofilter $name}}(w, *el); err != nil {
+			return
+		}
+	}
+	return
+}
+{{end}}
+
+// All maps are encoded by encoding reflect.Map, the key kind, the value kind and the length. Then all k/v pairs.
+// If element types are pointers, the element kind is bitwise ORed with reflect.Ptr.
+{{range $index1, $name1 := $all}}{{range $index2, $name2 := $all}}
+func EncodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w io.Writer, v map[{{$name1}}]{{$name2}}) (err error) {
+	if err = EncodeKind(w, reflect.Map); err != nil {
+		return
+	}
+	if err = EncodeKind(w, {{gofilter $name1}}Kind); err != nil {
+		return
+	}
+	if err = EncodeKind(w, {{gofilter $name2}}Kind); err != nil {
+		return
+	}
+	if err = Rawencodeuint(w, uint(len(v))); err != nil {
+		return
+	}
+	for key, value := range v {
+		if err = Rawencode{{gofilter $name1}}(w, key); err != nil {
+			return
+		}
+		if err = Rawencode{{gofilter $name2}}(w, value); err != nil {
+			return
+		}
+	}
+	return
+}
+
+func EncodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(w io.Writer, v map[*{{$name1}}]{{$name2}}) (err error) {
+	if err = EncodeKind(w, reflect.Map); err != nil {
+		return
+	}
+	if err = EncodeKind(w, {{gofilter $name1}}Kind); err != nil {
+		return
+	}
+	if err = EncodeKind(w, {{gofilter $name2}}Kind); err != nil {
+		return
+	}
+	if err = Rawencodeuint(w, uint(len(v))); err != nil {
+		return
+	}
+	for key, value := range v {
+		if err = Rawencode{{gofilter $name1}}(w, *key); err != nil {
+			return
+		}
+		if err = Rawencode{{gofilter $name2}}(w, value); err != nil {
+			return
+		}
+	}
+	return
+}
+
+func EncodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(w io.Writer, v map[{{$name1}}]*{{$name2}}) (err error) {
+	if err = EncodeKind(w, reflect.Map); err != nil {
+		return
+	}
+	if err = EncodeKind(w, {{gofilter $name1}}Kind); err != nil {
+		return
+	}
+	if err = EncodeKind(w, {{gofilter $name2}}Kind); err != nil {
+		return
+	}
+	if err = Rawencodeuint(w, uint(len(v))); err != nil {
+		return
+	}
+	for key, value := range v {
+		if err = Rawencode{{gofilter $name1}}(w, key); err != nil {
+			return
+		}
+		if err = Rawencode{{gofilter $name2}}(w, *value); err != nil {
+			return
+		}
+	}
+	return
+}
+
+func EncodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w io.Writer, v map[*{{$name1}}]*{{$name2}}) (err error) {
+	if err = EncodeKind(w, reflect.Map); err != nil {
+		return
+	}
+	if err = EncodeKind(w, {{gofilter $name1}}Kind); err != nil {
+		return
+	}
+	if err = EncodeKind(w, {{gofilter $name2}}Kind); err != nil {
+		return
+	}
+	if err = Rawencodeuint(w, uint(len(v))); err != nil {
+		return
+	}
+	for key, value := range v {
+		if err = Rawencode{{gofilter $name1}}(w, *key); err != nil {
+			return
+		}
+		if err = Rawencode{{gofilter $name2}}(w, *value); err != nil {
+			return
+		}
+	}
+	return
+}
+{{end}}{{end}}
+
+// All primitive types are expressed as encoding their kind and then their raw data
+{{range $index, $name := $primitives}}
+func Encode{{gofilter $name}}(w io.Writer, v {{$name}}) (err error) {
+  if err = EncodeKind(w, {{gofilter $name}}Kind); err != nil {
+		return
+	}
+	return Rawencode{{gofilter $name}}(w, v)
+}
+{{end}}
+
+func Encodeinterface__(w io.Writer, i interface{}) (err error) {
+	switch v := i.(type) {
+
+	case nil:
+		return EncodeKind(w, reflect.Invalid)
+// This does not include interface{} which is handled by this func.
+{{range $index, $name := $primitives}}
+	case {{$name}}:
+		return Encode{{gofilter $name}}(w, v)
+{{end}}
+{{range $index, $name := $all}}
+	case *{{$name}}:
+		return Encode{{gofilter $name}}(w, *v)
+	case []{{$name}}:
+		return EncodeSliceOf{{gofilter $name}}(w, v)
+	case *[]{{$name}}:
+		return EncodeSliceOf{{gofilter $name}}(w, *v)
+	case []*{{$name}}:
+		return EncodeSliceOf{{gofilter $name}}Ptr(w, v)
+	case *[]*{{$name}}:
+		return EncodeSliceOf{{gofilter $name}}Ptr(w, *v)
+{{end}}
+{{range $index1, $name1 := $all}}
+{{range $index2, $name2 := $all}}
+	case map[{{$name1}}]{{$name2}}:
+		return EncodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w, v)
+	case *map[{{$name1}}]{{$name2}}:
+		return EncodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w, *v)
+	case map[*{{$name1}}]{{$name2}}:
+		return EncodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(w, v)
+	case *map[*{{$name1}}]{{$name2}}:
+		return EncodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(w, *v)
+	case map[{{$name1}}]*{{$name2}}:
+		return EncodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(w, v)
+	case *map[{{$name1}}]*{{$name2}}:
+		return EncodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(w, *v)
+	case map[*{{$name1}}]*{{$name2}}:
+		return EncodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w, v)
+	case *map[*{{$name1}}]*{{$name2}}:
+		return EncodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w, *v)
+{{end}}
+{{end}}
+// Finally, the default will use the magical mystery powers of reflect to encode whatever we encounter.
+	default:
+		return Encodereflect_Value(w, reflect.ValueOf(i))
+	}
+
+	return
+}

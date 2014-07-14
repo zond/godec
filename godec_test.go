@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	binc "github.com/ugorji/go/codec"
+	"github.com/zond/godec/primitives"
 )
 
 func encodeDecode(t *testing.T, src, dst interface{}) {
@@ -216,12 +217,12 @@ func TestEncodeDecodeUint64(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		buf := &bytes.Buffer{}
 		i1 := uint64(rand.Int63())
-		if err := rawencodeuint64(buf, i1); err != nil {
+		if err := primitives.Rawencodeuint64(buf, i1); err != nil {
 			t.Fatalf("%v", err)
 		}
 		var i2 uint64
 		by := buf.Bytes()
-		if err := rawdecodeuint64(IODecodeReader{buf}, &i2); err != nil {
+		if err := primitives.Rawdecodeuint64(primitives.IODecodeReader{buf}, &i2); err != nil {
 			t.Fatalf("%v", err)
 		}
 		if i1 != i2 {
@@ -234,12 +235,12 @@ func TestEncodeDecodeInt64(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		buf := &bytes.Buffer{}
 		i1 := rand.Int63()
-		if err := rawencodeint64(buf, i1); err != nil {
+		if err := primitives.Rawencodeint64(buf, i1); err != nil {
 			t.Fatalf("%v", err)
 		}
 		var i2 int64
 		by := buf.Bytes()
-		if err := rawdecodeint64(IODecodeReader{buf}, &i2); err != nil {
+		if err := primitives.Rawdecodeint64(primitives.IODecodeReader{buf}, &i2); err != nil {
 			t.Fatalf("%v", err)
 		}
 		if i1 != i2 {
