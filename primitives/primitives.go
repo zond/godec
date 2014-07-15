@@ -9,93 +9,50 @@ import (
 )
 
 const (
-	reflect_ValueKind = reflect.Struct
-	interface__Kind   = reflect.Interface
-	stringKind        = reflect.String
-	boolKind          = reflect.Uint64
-	intKind           = reflect.Int64
-	int8Kind          = reflect.Int64
-	int16Kind         = reflect.Int64
-	int32Kind         = reflect.Int64
-	int64Kind         = reflect.Int64
-	uintKind          = reflect.Uint64
-	uint8Kind         = reflect.Uint64
-	uint16Kind        = reflect.Uint64
-	uint32Kind        = reflect.Uint64
-	uint64Kind        = reflect.Uint64
-	uintptrKind       = reflect.Uint64
-	float32Kind       = reflect.Float64
-	float64Kind       = reflect.Float64
-	complex64Kind     = reflect.Complex128
-	complex128Kind    = reflect.Complex128
+	interface__Kind = reflect.Interface
+	stringKind      = reflect.String
+	boolKind        = reflect.Uint64
+	intKind         = reflect.Int64
+	int8Kind        = reflect.Int64
+	int16Kind       = reflect.Int64
+	int32Kind       = reflect.Int64
+	int64Kind       = reflect.Int64
+	uintKind        = reflect.Uint64
+	uint8Kind       = reflect.Uint64
+	uint16Kind      = reflect.Uint64
+	uint32Kind      = reflect.Uint64
+	uint64Kind      = reflect.Uint64
+	uintptrKind     = reflect.Uint64
+	float32Kind     = reflect.Float64
+	float64Kind     = reflect.Float64
+	complex64Kind   = reflect.Complex128
+	complex128Kind  = reflect.Complex128
 )
 
+type Encoder interface {
+	io.Writer
+	EncodeReflectValue(reflect.Value) error
+}
+
 type DecodeReader interface {
-	io.ByteReader
+	ReadByte() (byte, error)
 	ReadBytes(n int) ([]byte, error)
 }
 
-type IODecodeReader struct {
-	Reader io.Reader
+type Decoder interface {
+	DecodeReader
+	DecodeReflectValue(reflect.Value) error
 }
 
-func (self IODecodeReader) ReadByte() (result byte, err error) {
-	buf := []byte{0}
-	if _, err = self.Reader.Read(buf); err != nil {
-		return
-	}
-	result = buf[0]
-	return
-}
-
-func (self IODecodeReader) ReadBytes(n int) (result []byte, err error) {
-	result = make([]byte, n)
-	_, err = io.ReadAtLeast(self.Reader, result, n)
-	return
-}
-
-type BytesDecodeReader struct {
-	Buf []byte
-	Pos int
-}
-
-func (self *BytesDecodeReader) ReadByte() (result byte, err error) {
-	if self.Pos >= len(self.Buf) {
-		err = io.EOF
-		return
-	}
-	result = self.Buf[self.Pos]
-	self.Pos++
-	return
-}
-
-func (self *BytesDecodeReader) ReadBytes(n int) (result []byte, err error) {
-	if self.Pos+n > len(self.Buf) {
-		err = io.EOF
-		return
-	}
-	result = self.Buf[self.Pos : self.Pos+n]
-	self.Pos += n
-	return
-}
-
-func EncodeKind(w io.Writer, k reflect.Kind) (err error) {
+func EncodeKind(w Encoder, k reflect.Kind) (err error) {
 	return Rawencodeuint64(w, uint64(k))
 }
 
-func Encodereflect_Value(w io.Writer, v reflect.Value) (err error) {
-	return
-}
-
-func Rawencodeinterface__(w io.Writer, v interface{}) (err error) {
+func Rawencodeinterface__(w Encoder, v interface{}) (err error) {
 	return Encodeinterface__(w, v)
 }
 
-func Rawencodereflect_Value(w io.Writer, v reflect.Value) (err error) {
-	return Encodereflect_Value(w, v)
-}
-
-func Rawencodebool(w io.Writer, b bool) (err error) {
+func Rawencodebool(w Encoder, b bool) (err error) {
 	if b {
 		return Rawencodeuint64(w, 1)
 	} else {
@@ -103,51 +60,51 @@ func Rawencodebool(w io.Writer, b bool) (err error) {
 	}
 }
 
-func Rawencodefloat32(w io.Writer, f float32) (err error) {
+func Rawencodefloat32(w Encoder, f float32) (err error) {
 	return Rawencodeuint64(w, uint64(math.Float32bits(f)))
 }
 
-func Rawencodefloat64(w io.Writer, f float64) (err error) {
+func Rawencodefloat64(w Encoder, f float64) (err error) {
 	return Rawencodeuint64(w, math.Float64bits(f))
 }
 
-func Rawencodeint(w io.Writer, u int) (err error) {
+func Rawencodeint(w Encoder, u int) (err error) {
 	return Rawencodeint64(w, int64(u))
 }
 
-func Rawencodeint8(w io.Writer, u int8) (err error) {
+func Rawencodeint8(w Encoder, u int8) (err error) {
 	return Rawencodeint64(w, int64(u))
 }
 
-func Rawencodeint16(w io.Writer, u int16) (err error) {
+func Rawencodeint16(w Encoder, u int16) (err error) {
 	return Rawencodeint64(w, int64(u))
 }
 
-func Rawencodeint32(w io.Writer, u int32) (err error) {
+func Rawencodeint32(w Encoder, u int32) (err error) {
 	return Rawencodeint64(w, int64(u))
 }
 
-func Rawencodeuintptr(w io.Writer, u uintptr) (err error) {
+func Rawencodeuintptr(w Encoder, u uintptr) (err error) {
 	return Rawencodeuint64(w, uint64(u))
 }
 
-func Rawencodeuint(w io.Writer, u uint) (err error) {
+func Rawencodeuint(w Encoder, u uint) (err error) {
 	return Rawencodeuint64(w, uint64(u))
 }
 
-func Rawencodeuint8(w io.Writer, u uint8) (err error) {
+func Rawencodeuint8(w Encoder, u uint8) (err error) {
 	return Rawencodeuint64(w, uint64(u))
 }
 
-func Rawencodeuint16(w io.Writer, u uint16) (err error) {
+func Rawencodeuint16(w Encoder, u uint16) (err error) {
 	return Rawencodeuint64(w, uint64(u))
 }
 
-func Rawencodeuint32(w io.Writer, u uint32) (err error) {
+func Rawencodeuint32(w Encoder, u uint32) (err error) {
 	return Rawencodeuint64(w, uint64(u))
 }
 
-func Rawencodeint64(w io.Writer, i int64) (err error) {
+func Rawencodeint64(w Encoder, i int64) (err error) {
 	ux := uint64(i) << 1
 	if i < 0 {
 		ux = ^ux
@@ -155,7 +112,7 @@ func Rawencodeint64(w io.Writer, i int64) (err error) {
 	return Rawencodeuint64(w, ux)
 }
 
-func Rawencodeuint64(w io.Writer, u uint64) (err error) {
+func Rawencodeuint64(w Encoder, u uint64) (err error) {
 	for u >= 0x80 {
 		if _, err = w.Write([]byte{byte(u) | 0x80}); err != nil {
 			return
@@ -168,21 +125,21 @@ func Rawencodeuint64(w io.Writer, u uint64) (err error) {
 	return
 }
 
-func Rawencodecomplex64(w io.Writer, c complex64) (err error) {
+func Rawencodecomplex64(w Encoder, c complex64) (err error) {
 	if err = Rawencodefloat64(w, float64(real(c))); err != nil {
 		return
 	}
 	return Rawencodefloat64(w, float64(imag(c)))
 }
 
-func Rawencodecomplex128(w io.Writer, c complex128) (err error) {
+func Rawencodecomplex128(w Encoder, c complex128) (err error) {
 	if err = Rawencodefloat64(w, real(c)); err != nil {
 		return
 	}
 	return Rawencodefloat64(w, imag(c))
 }
 
-func DecodeKind(r DecodeReader) (result reflect.Kind, err error) {
+func DecodeKind(r Decoder) (result reflect.Kind, err error) {
 	var u uint64
 	if err = Rawdecodeuint64(r, &u); err != nil {
 		return
@@ -191,11 +148,7 @@ func DecodeKind(r DecodeReader) (result reflect.Kind, err error) {
 	return
 }
 
-func Decodereflect_Value(r DecodeReader, v reflect.Value) (err error) {
-	return
-}
-
-func Rawencodestring(w io.Writer, s string) (err error) {
+func Rawencodestring(w Encoder, s string) (err error) {
 	if err = Rawencodeuint(w, uint(len(s))); err != nil {
 		return
 	}
@@ -204,7 +157,7 @@ func Rawencodestring(w io.Writer, s string) (err error) {
 }
 
 // The special case for byte slices is here, and we treat byte slices exactly like strings.
-func EncodeSliceOfuint8(w io.Writer, v []uint8) (err error) {
+func EncodeSliceOfuint8(w Encoder, v []uint8) (err error) {
 	if err = EncodeKind(w, stringKind); err != nil {
 		return
 	}
@@ -215,7 +168,7 @@ func EncodeSliceOfuint8(w io.Writer, v []uint8) (err error) {
 	return
 }
 
-func Rawdecodestring(r DecodeReader, s *string) (err error) {
+func Rawdecodestring(r Decoder, s *string) (err error) {
 	var size uint
 	if err = Rawdecodeuint(r, &size); err != nil {
 		return
@@ -229,7 +182,7 @@ func Rawdecodestring(r DecodeReader, s *string) (err error) {
 }
 
 // The special case for byte slices is here, and we treat byte slices exactly like strings.
-func DecodeSliceOfuint8(r DecodeReader, v *[]uint8) (err error) {
+func DecodeSliceOfuint8(r Decoder, v *[]uint8) (err error) {
 	kind, err := DecodeKind(r)
 	if err != nil {
 		return
@@ -246,15 +199,15 @@ func DecodeSliceOfuint8(r DecodeReader, v *[]uint8) (err error) {
 	return
 }
 
-func Rawdecodeinterface__(r DecodeReader, i *interface{}) (err error) {
+func Rawdecodeinterface__(r Decoder, i *interface{}) (err error) {
 	return
 }
 
-func Rawdecodereflect_Value(r DecodeReader, v *reflect.Value) (err error) {
+func Rawdecodereflect_Value(r Decoder, v *reflect.Value) (err error) {
 	return
 }
 
-func Rawdecodebool(r DecodeReader, b *bool) (err error) {
+func Rawdecodebool(r Decoder, b *bool) (err error) {
 	var u uint64
 	if err = Rawdecodeuint64(r, &u); err != nil {
 		return
@@ -263,7 +216,7 @@ func Rawdecodebool(r DecodeReader, b *bool) (err error) {
 	return
 }
 
-func Rawdecodecomplex128(r DecodeReader, c *complex128) (err error) {
+func Rawdecodecomplex128(r Decoder, c *complex128) (err error) {
 	var re float64
 	if err = Rawdecodefloat64(r, &re); err != nil {
 		return
@@ -276,7 +229,7 @@ func Rawdecodecomplex128(r DecodeReader, c *complex128) (err error) {
 	return
 }
 
-func Rawdecodecomplex64(r DecodeReader, c *complex64) (err error) {
+func Rawdecodecomplex64(r Decoder, c *complex64) (err error) {
 	var re float64
 	if err = Rawdecodefloat64(r, &re); err != nil {
 		return
@@ -289,7 +242,7 @@ func Rawdecodecomplex64(r DecodeReader, c *complex64) (err error) {
 	return
 }
 
-func Rawdecodefloat32(r DecodeReader, f *float32) (err error) {
+func Rawdecodefloat32(r Decoder, f *float32) (err error) {
 	var u uint64
 	if err = Rawdecodeuint64(r, &u); err != nil {
 		return
@@ -298,7 +251,7 @@ func Rawdecodefloat32(r DecodeReader, f *float32) (err error) {
 	return
 }
 
-func Rawdecodefloat64(r DecodeReader, f *float64) (err error) {
+func Rawdecodefloat64(r Decoder, f *float64) (err error) {
 	var u uint64
 	if err = Rawdecodeuint64(r, &u); err != nil {
 		return
@@ -307,7 +260,7 @@ func Rawdecodefloat64(r DecodeReader, f *float64) (err error) {
 	return
 }
 
-func Rawdecodeint(r DecodeReader, i *int) (err error) {
+func Rawdecodeint(r Decoder, i *int) (err error) {
 	var i64 int64
 	if err = Rawdecodeint64(r, &i64); err != nil {
 		return
@@ -316,7 +269,7 @@ func Rawdecodeint(r DecodeReader, i *int) (err error) {
 	return
 }
 
-func Rawdecodeint8(r DecodeReader, i *int8) (err error) {
+func Rawdecodeint8(r Decoder, i *int8) (err error) {
 	var i64 int64
 	if err = Rawdecodeint64(r, &i64); err != nil {
 		return
@@ -325,7 +278,7 @@ func Rawdecodeint8(r DecodeReader, i *int8) (err error) {
 	return
 }
 
-func Rawdecodeint16(r DecodeReader, i *int16) (err error) {
+func Rawdecodeint16(r Decoder, i *int16) (err error) {
 	var i64 int64
 	if err = Rawdecodeint64(r, &i64); err != nil {
 		return
@@ -334,7 +287,7 @@ func Rawdecodeint16(r DecodeReader, i *int16) (err error) {
 	return
 }
 
-func Rawdecodeint32(r DecodeReader, i *int32) (err error) {
+func Rawdecodeint32(r Decoder, i *int32) (err error) {
 	var i64 int64
 	if err = Rawdecodeint64(r, &i64); err != nil {
 		return
@@ -343,7 +296,7 @@ func Rawdecodeint32(r DecodeReader, i *int32) (err error) {
 	return
 }
 
-func Rawdecodeint64(r DecodeReader, x *int64) (err error) {
+func Rawdecodeint64(r Decoder, x *int64) (err error) {
 	var ux uint64
 	if err = Rawdecodeuint64(r, &ux); err != nil {
 		return
@@ -355,7 +308,7 @@ func Rawdecodeint64(r DecodeReader, x *int64) (err error) {
 	return
 }
 
-func Rawdecodeuint(r DecodeReader, u *uint) (err error) {
+func Rawdecodeuint(r Decoder, u *uint) (err error) {
 	var u64 uint64
 	if err = Rawdecodeuint64(r, &u64); err != nil {
 		return
@@ -364,7 +317,7 @@ func Rawdecodeuint(r DecodeReader, u *uint) (err error) {
 	return
 }
 
-func Rawdecodeuint8(r DecodeReader, u *uint8) (err error) {
+func Rawdecodeuint8(r Decoder, u *uint8) (err error) {
 	var u64 uint64
 	if err = Rawdecodeuint64(r, &u64); err != nil {
 		return
@@ -373,7 +326,7 @@ func Rawdecodeuint8(r DecodeReader, u *uint8) (err error) {
 	return
 }
 
-func Rawdecodeuint16(r DecodeReader, u *uint16) (err error) {
+func Rawdecodeuint16(r Decoder, u *uint16) (err error) {
 	var u64 uint64
 	if err = Rawdecodeuint64(r, &u64); err != nil {
 		return
@@ -382,7 +335,7 @@ func Rawdecodeuint16(r DecodeReader, u *uint16) (err error) {
 	return
 }
 
-func Rawdecodeuint32(r DecodeReader, u *uint32) (err error) {
+func Rawdecodeuint32(r Decoder, u *uint32) (err error) {
 	var u64 uint64
 	if err = Rawdecodeuint64(r, &u64); err != nil {
 		return
@@ -391,7 +344,7 @@ func Rawdecodeuint32(r DecodeReader, u *uint32) (err error) {
 	return
 }
 
-func Rawdecodeuintptr(r DecodeReader, u *uintptr) (err error) {
+func Rawdecodeuintptr(r Decoder, u *uintptr) (err error) {
 	var u64 uint64
 	if err = Rawdecodeuint64(r, &u64); err != nil {
 		return
@@ -402,7 +355,7 @@ func Rawdecodeuintptr(r DecodeReader, u *uintptr) (err error) {
 
 var overflow = errors.New("binary: varint overflows a 64-bit integer")
 
-func Rawdecodeuint64(r DecodeReader, x *uint64) (err error) {
+func Rawdecodeuint64(r Decoder, x *uint64) (err error) {
 	*x = 0
 	var s uint
 	var b byte

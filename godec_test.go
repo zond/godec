@@ -3,6 +3,7 @@ package godec
 import (
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -95,6 +96,16 @@ func runBenchSlice(b *testing.B, m marshaller) {
 	}
 }
 
+type jsonMarshaller struct{}
+
+func (self jsonMarshaller) Marshal(i interface{}) ([]byte, error) {
+	return json.Marshal(i)
+}
+
+func (self jsonMarshaller) Unmarshal(b []byte, i interface{}) error {
+	return json.Unmarshal(b, i)
+}
+
 var bh binc.BincHandle
 
 type bincMarshaller struct{}
@@ -141,6 +152,10 @@ func (self gobMarshaller) Unmarshal(b []byte, i interface{}) (err error) {
 	return
 }
 
+func BenchmarkJSONStringMap(b *testing.B) {
+	runBenchMap(b, jsonMarshaller{})
+}
+
 func BenchmarkBincStringMap(b *testing.B) {
 	runBenchMap(b, bincMarshaller{})
 }
@@ -151,6 +166,10 @@ func BenchmarkGobStringMap(b *testing.B) {
 
 func BenchmarkGodecStringMap(b *testing.B) {
 	runBenchMap(b, godecMarshaller{})
+}
+
+func BenchmarkJSONStringSlice(b *testing.B) {
+	runBenchSlice(b, jsonMarshaller{})
 }
 
 func BenchmarkBincStringSlice(b *testing.B) {
@@ -217,12 +236,12 @@ func TestEncodeDecodeUint64(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		buf := &bytes.Buffer{}
 		i1 := uint64(rand.Int63())
-		if err := primitives.Rawencodeuint64(buf, i1); err != nil {
+		if err := primitives.Rawencodeuint64(&Encoder{Writer: buf}, i1); err != nil {
 			t.Fatalf("%v", err)
 		}
 		var i2 uint64
 		by := buf.Bytes()
-		if err := primitives.Rawdecodeuint64(primitives.IODecodeReader{buf}, &i2); err != nil {
+		if err := primitives.Rawdecodeuint64(&Decoder{DecodeReader: IODecodeReader{buf}}, &i2); err != nil {
 			t.Fatalf("%v", err)
 		}
 		if i1 != i2 {
@@ -235,12 +254,12 @@ func TestEncodeDecodeInt64(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		buf := &bytes.Buffer{}
 		i1 := rand.Int63()
-		if err := primitives.Rawencodeint64(buf, i1); err != nil {
+		if err := primitives.Rawencodeint64(&Encoder{buf}, i1); err != nil {
 			t.Fatalf("%v", err)
 		}
 		var i2 int64
 		by := buf.Bytes()
-		if err := primitives.Rawdecodeint64(primitives.IODecodeReader{buf}, &i2); err != nil {
+		if err := primitives.Rawdecodeint64(&Decoder{DecodeReader: IODecodeReader{buf}}, &i2); err != nil {
 			t.Fatalf("%v", err)
 		}
 		if i1 != i2 {

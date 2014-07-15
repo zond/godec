@@ -12,7 +12,7 @@ import (
 // But we skip []byte, because they are so darn simple to encode that we do it in another explicit function.
 {{range $index, $name := $all}}
 {{if ne $name "uint8"}}
-func DecodeSliceOf{{gofilter $name}}(r DecodeReader, v *[]{{$name}}) (err error) {
+func DecodeSliceOf{{gofilter $name}}(r Decoder, v *[]{{$name}}) (err error) {
 	kind, err := DecodeKind(r)
 	if err != nil {
 		return
@@ -43,7 +43,7 @@ func DecodeSliceOf{{gofilter $name}}(r DecodeReader, v *[]{{$name}}) (err error)
 }
 {{end}}
 
-func DecodeSliceOf{{gofilter $name}}Ptr(r DecodeReader, v *[]*{{$name}}) (err error) {
+func DecodeSliceOf{{gofilter $name}}Ptr(r Decoder, v *[]*{{$name}}) (err error) {
 	kind, err := DecodeKind(r)
 	if err != nil {
 		return
@@ -78,7 +78,7 @@ func DecodeSliceOf{{gofilter $name}}Ptr(r DecodeReader, v *[]*{{$name}}) (err er
 
 // All maps are decoded by verifying that the encoded kind is reflect.Map, and that the key and value kinds are the same, then reading the raw data.
 {{range $index1, $name1 := $all}}{{range $index2, $name2 := $all}}
-func DecodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(r DecodeReader, v *map[{{$name1}}]{{$name2}}) (err error) {
+func DecodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(r Decoder, v *map[{{$name1}}]{{$name2}}) (err error) {
   kind, err := DecodeKind(r)
 	if err != nil {
 		return
@@ -122,7 +122,7 @@ func DecodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(r DecodeReader, v *map[
 	return
 }
 
-func DecodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(r DecodeReader, v *map[*{{$name1}}]{{$name2}}) (err error) {
+func DecodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(r Decoder, v *map[*{{$name1}}]{{$name2}}) (err error) {
   kind, err := DecodeKind(r)
 	if err != nil {
 		return
@@ -166,7 +166,7 @@ func DecodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(r DecodeReader, v *m
 	return
 }
 
-func DecodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(r DecodeReader, v *map[{{$name1}}]*{{$name2}}) (err error) {
+func DecodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(r Decoder, v *map[{{$name1}}]*{{$name2}}) (err error) {
   kind, err := DecodeKind(r)
 	if err != nil {
 		return
@@ -210,7 +210,7 @@ func DecodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(r DecodeReader, v *m
 	return
 }
 
-func DecodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(r DecodeReader, v *map[*{{$name1}}]*{{$name2}}) (err error) {
+func DecodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(r Decoder, v *map[*{{$name1}}]*{{$name2}}) (err error) {
   kind, err := DecodeKind(r)
 	if err != nil {
 		return
@@ -257,7 +257,7 @@ func DecodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(r DecodeReader, v
 
 // All primitive types are parsed by verifying that the encoded kind makes sense, and then parsing their raw data
 {{range $index, $name := $primitives}}
-func Decode{{gofilter $name}}(r DecodeReader, v *{{$name}}) (err error) {
+func Decode{{gofilter $name}}(r Decoder, v *{{$name}}) (err error) {
 	kind, err := DecodeKind(r)
 	if err != nil {
 		return
@@ -270,7 +270,7 @@ func Decode{{gofilter $name}}(r DecodeReader, v *{{$name}}) (err error) {
 }
 {{end}}
 
-func Decodeinterface__(r DecodeReader, i interface{}) (err error) {
+func Decodeinterface__(r Decoder, i interface{}) (err error) {
 	switch v := i.(type) {
 
 	case nil:
@@ -299,7 +299,7 @@ func Decodeinterface__(r DecodeReader, i interface{}) (err error) {
 {{end}}
 // Finally, the default will use the magical mystery powers of reflect to encode whatever we encounter.
 	default:
-		return Decodereflect_Value(r, reflect.ValueOf(i))
+		return r.DecodeReflectValue(reflect.ValueOf(i))
   }
 	
 	return

@@ -4,7 +4,6 @@ package primitives
 {{ $all := .All }}
 
 import (
-		"io"
 		"reflect"
 )
 
@@ -14,7 +13,7 @@ import (
 // But we skip []byte, because they are so darn simple to encode that we do it in another explicit function.
 {{range $index, $name := $all}}
 {{if ne $name "uint8"}}
-func EncodeSliceOf{{gofilter $name}}(w io.Writer, v []{{$name}}) (err error) {
+func EncodeSliceOf{{gofilter $name}}(w Encoder, v []{{$name}}) (err error) {
 	if err = EncodeKind(w, reflect.Slice); err != nil {
 		return
 	}
@@ -33,7 +32,7 @@ func EncodeSliceOf{{gofilter $name}}(w io.Writer, v []{{$name}}) (err error) {
 }
 {{end}}
 
-func EncodeSliceOf{{gofilter $name}}Ptr(w io.Writer, v []*{{$name}}) (err error) {
+func EncodeSliceOf{{gofilter $name}}Ptr(w Encoder, v []*{{$name}}) (err error) {
 	if err = EncodeKind(w, reflect.Slice); err != nil {
 		return
 	}
@@ -55,7 +54,7 @@ func EncodeSliceOf{{gofilter $name}}Ptr(w io.Writer, v []*{{$name}}) (err error)
 // All maps are encoded by encoding reflect.Map, the key kind, the value kind and the length. Then all k/v pairs.
 // If element types are pointers, the element kind is bitwise ORed with reflect.Ptr.
 {{range $index1, $name1 := $all}}{{range $index2, $name2 := $all}}
-func EncodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w io.Writer, v map[{{$name1}}]{{$name2}}) (err error) {
+func EncodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w Encoder, v map[{{$name1}}]{{$name2}}) (err error) {
 	if err = EncodeKind(w, reflect.Map); err != nil {
 		return
 	}
@@ -79,7 +78,7 @@ func EncodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w io.Writer, v map[{{$n
 	return
 }
 
-func EncodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(w io.Writer, v map[*{{$name1}}]{{$name2}}) (err error) {
+func EncodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(w Encoder, v map[*{{$name1}}]{{$name2}}) (err error) {
 	if err = EncodeKind(w, reflect.Map); err != nil {
 		return
 	}
@@ -103,7 +102,7 @@ func EncodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(w io.Writer, v map[*
 	return
 }
 
-func EncodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(w io.Writer, v map[{{$name1}}]*{{$name2}}) (err error) {
+func EncodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(w Encoder, v map[{{$name1}}]*{{$name2}}) (err error) {
 	if err = EncodeKind(w, reflect.Map); err != nil {
 		return
 	}
@@ -127,7 +126,7 @@ func EncodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(w io.Writer, v map[{
 	return
 }
 
-func EncodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w io.Writer, v map[*{{$name1}}]*{{$name2}}) (err error) {
+func EncodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w Encoder, v map[*{{$name1}}]*{{$name2}}) (err error) {
 	if err = EncodeKind(w, reflect.Map); err != nil {
 		return
 	}
@@ -154,7 +153,7 @@ func EncodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w io.Writer, v ma
 
 // All primitive types are expressed as encoding their kind and then their raw data
 {{range $index, $name := $primitives}}
-func Encode{{gofilter $name}}(w io.Writer, v {{$name}}) (err error) {
+func Encode{{gofilter $name}}(w Encoder, v {{$name}}) (err error) {
   if err = EncodeKind(w, {{gofilter $name}}Kind); err != nil {
 		return
 	}
@@ -162,7 +161,7 @@ func Encode{{gofilter $name}}(w io.Writer, v {{$name}}) (err error) {
 }
 {{end}}
 
-func Encodeinterface__(w io.Writer, i interface{}) (err error) {
+func Encodeinterface__(w Encoder, i interface{}) (err error) {
 	switch v := i.(type) {
 
 	case nil:
@@ -206,7 +205,7 @@ func Encodeinterface__(w io.Writer, i interface{}) (err error) {
 {{end}}
 // Finally, the default will use the magical mystery powers of reflect to encode whatever we encounter.
 	default:
-		return Encodereflect_Value(w, reflect.ValueOf(i))
+		return w.EncodeReflectValue(reflect.ValueOf(i))
 	}
 
 	return

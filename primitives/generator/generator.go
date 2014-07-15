@@ -43,16 +43,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defaultTemplateDir := filepath.Join(wd, "primitives", "templates")
+	defaultTemplateDir := filepath.Join(wd, "templates")
 	if _, err = os.Stat(defaultTemplateDir); err != nil {
 		defaultTemplateDir = ""
 		err = nil
 	}
-	defaultDestinationDir := filepath.Join(wd, "primitives")
-	if _, err = os.Stat(defaultDestinationDir); err != nil {
-		defaultDestinationDir = wd
-		err = nil
-	}
+	defaultDestinationDir := wd
 	templateDir := flag.String("templateDir", defaultTemplateDir, "Where to look for the templates.")
 	destinationDir := flag.String("destinationDir", defaultDestinationDir, "Where to put the generated files.")
 

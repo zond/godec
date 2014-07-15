@@ -1,10 +1,6 @@
 package godec
 
-import (
-	"bytes"
-
-	"github.com/zond/godec/primitives"
-)
+import "bytes"
 
 func Marshal(i interface{}) (result []byte, err error) {
 	buf := &bytes.Buffer{}
@@ -17,7 +13,9 @@ func Marshal(i interface{}) (result []byte, err error) {
 }
 
 func Unmarshal(b []byte, i interface{}) (err error) {
-	dec := NewDecoder(&primitives.BytesDecodeReader{Buf: b})
+	dec := &Decoder{
+		DecodeReader: &BytesDecodeReader{Buf: b},
+	}
 	if err = dec.Decode(i); err != nil {
 		return
 	}

@@ -2,20 +2,25 @@ package godec
 
 import (
 	"io"
+	"reflect"
 
 	"github.com/zond/godec/primitives"
 )
 
 type Encoder struct {
-	writer io.Writer
+	io.Writer
 }
 
 func NewEncoder(w io.Writer) *Encoder {
 	return &Encoder{
-		writer: w,
+		Writer: w,
 	}
 }
 
+func (self *Encoder) EncodeReflectValue(v reflect.Value) (err error) {
+	return
+}
+
 func (self *Encoder) Encode(i interface{}) (err error) {
-	return primitives.Encodeinterface__(self.writer, i)
+	return primitives.Encodeinterface__(self, i)
 }
