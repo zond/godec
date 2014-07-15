@@ -149,7 +149,7 @@ func DecodeKind(r Decoder) (result reflect.Kind, err error) {
 }
 
 func Rawencodestring(w Encoder, s string) (err error) {
-	if err = Rawencodeuint(w, uint(len(s))); err != nil {
+	if err = Rawencodeuint64(w, uint64(len(s))); err != nil {
 		return
 	}
 	_, err = io.WriteString(w, s)

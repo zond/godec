@@ -26,31 +26,6 @@ func (self IODecodeReader) ReadBytes(n int) (result []byte, err error) {
 	return
 }
 
-type BytesDecodeReader struct {
-	Buf []byte
-	Pos int
-}
-
-func (self *BytesDecodeReader) ReadByte() (result byte, err error) {
-	if self.Pos >= len(self.Buf) {
-		err = io.EOF
-		return
-	}
-	result = self.Buf[self.Pos]
-	self.Pos++
-	return
-}
-
-func (self *BytesDecodeReader) ReadBytes(n int) (result []byte, err error) {
-	if self.Pos+n > len(self.Buf) {
-		err = io.EOF
-		return
-	}
-	result = self.Buf[self.Pos : self.Pos+n]
-	self.Pos += n
-	return
-}
-
 type Decoder struct {
 	primitives.DecodeReader
 }

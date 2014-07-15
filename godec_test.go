@@ -16,15 +16,15 @@ import (
 func encodeDecode(t *testing.T, src, dst interface{}) {
 	b, err := Marshal(src)
 	if err != nil {
-		t.Errorf("Unable to encode %v: %v", src, err)
+		t.Fatalf("Unable to encode %v: %v", src, err)
 		return
 	}
 	if err = Unmarshal(b, dst); err != nil {
-		t.Errorf("Unable to decode to %v: %v", reflect.ValueOf(dst).Elem(), err)
+		t.Fatalf("Unable to decode to %v: %v", reflect.ValueOf(dst).Elem(), err)
 	}
 	dstElem := reflect.ValueOf(dst).Elem().Interface()
 	if !reflect.DeepEqual(src, dstElem) {
-		t.Errorf("Encoding/decoding %v produced %v", src, dstElem)
+		t.Fatalf("Encoding/decoding %v produced %v", src, dstElem)
 	}
 }
 
@@ -43,6 +43,11 @@ func init() {
 		bigMap[s] = s
 	}
 }
+
+const (
+	encode = 1 << iota
+	decode
+)
 
 func runBenchMap(b *testing.B, m marshaller) {
 	target := map[string]string{}
@@ -70,29 +75,44 @@ func runBenchMap(b *testing.B, m marshaller) {
 	}
 }
 
-func runBenchSlice(b *testing.B, m marshaller) {
-	target := []string{}
-	for i := 0; i < b.N; i++ {
-		res, err := m.Marshal(bigSlice)
-		if err != nil {
+func runBenchSlice(b *testing.B, m marshaller, ops int) {
+	var encoded []byte
+	var err error
+	if ops&encode == 0 {
+		b.StopTimer()
+		if encoded, err = m.Marshal(bigSlice); err != nil {
 			b.Fatalf("%v", err)
 		}
-		if len(res) == 0 {
+		if len(encoded) == 0 {
 			b.Fatalf("Zero marshalling?")
 		}
-		if err = m.Unmarshal(res, &target); err != nil {
-			b.Fatalf("%v", err)
-		}
-		b.StopTimer()
-		if len(target) != len(bigSlice) {
-			b.Fatalf("Incorrect unmarshal")
-		}
-		for i, v := range target {
-			if bigSlice[i] != v {
-				b.Fatalf("Incorrect unmarshal")
+		b.StartTimer()
+	}
+	target := []string{}
+	for i := 0; i < b.N; i++ {
+		if ops&encode == encode {
+			if encoded, err = m.Marshal(bigSlice); err != nil {
+				b.Fatalf("%v", err)
+			}
+			if len(encoded) == 0 {
+				b.Fatalf("Zero marshalling?")
 			}
 		}
-		b.StartTimer()
+		if ops&decode == decode {
+			if err = m.Unmarshal(encoded, &target); err != nil {
+				b.Fatalf("%v", err)
+			}
+			b.StopTimer()
+			if len(target) != len(bigSlice) {
+				b.Fatalf("Incorrect unmarshal")
+			}
+			for i, v := range target {
+				if bigSlice[i] != v {
+					b.Fatalf("Incorrect unmarshal")
+				}
+			}
+			b.StartTimer()
+		}
 	}
 }
 
@@ -169,19 +189,35 @@ func BenchmarkGodecStringMap(b *testing.B) {
 }
 
 func BenchmarkJSONStringSlice(b *testing.B) {
-	runBenchSlice(b, jsonMarshaller{})
+	runBenchSlice(b, jsonMarshaller{}, encode|decode)
 }
 
 func BenchmarkBincStringSlice(b *testing.B) {
-	runBenchSlice(b, bincMarshaller{})
+	runBenchSlice(b, bincMarshaller{}, encode|decode)
 }
 
 func BenchmarkGobStringSlice(b *testing.B) {
-	runBenchSlice(b, gobMarshaller{})
+	runBenchSlice(b, gobMarshaller{}, encode|decode)
 }
 
 func BenchmarkGodecStringSlice(b *testing.B) {
-	runBenchSlice(b, godecMarshaller{})
+	runBenchSlice(b, godecMarshaller{}, encode|decode)
+}
+
+func BenchmarkGodecStringSliceEncode(b *testing.B) {
+	runBenchSlice(b, godecMarshaller{}, encode)
+}
+
+func BenchmarkBincStringSliceEncode(b *testing.B) {
+	runBenchSlice(b, bincMarshaller{}, encode)
+}
+
+func BenchmarkGodecStringSliceDecode(b *testing.B) {
+	runBenchSlice(b, godecMarshaller{}, decode)
+}
+
+func BenchmarkBincStringSliceDecode(b *testing.B) {
+	runBenchSlice(b, bincMarshaller{}, decode)
 }
 
 func TestEncodeDecodePrimitiveTypes(t *testing.T) {
