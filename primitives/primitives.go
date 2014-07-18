@@ -1,9 +1,7 @@
 package primitives
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"math"
 	"reflect"
 )
@@ -29,12 +27,19 @@ const (
 	complex128Kind  = reflect.Complex128
 )
 
+type EncodeWriter interface {
+	WriteBytes([]byte) error
+	WriteString(string) error
+	WriteUint64(uint64) error
+}
+
 type Encoder interface {
-	io.Writer
+	EncodeWriter
 	EncodeReflectValue(reflect.Value) error
 }
 
 type DecodeReader interface {
+	ReadUint64() (uint64, error)
 	ReadByte() (byte, error)
 	ReadBytes(n int) ([]byte, error)
 }
@@ -112,17 +117,13 @@ func Rawencodeint64(w Encoder, i int64) (err error) {
 	return Rawencodeuint64(w, ux)
 }
 
-func Rawencodeuint64(w Encoder, u uint64) (err error) {
-	for u >= 0x80 {
-		if _, err = w.Write([]byte{byte(u) | 0x80}); err != nil {
-			return
-		}
-		u >>= 7
-	}
-	if _, err = w.Write([]byte{byte(u)}); err != nil {
-		return
-	}
+func Rawdecodeuint64(r Decoder, x *uint64) (err error) {
+	*x, err = r.ReadUint64()
 	return
+}
+
+func Rawencodeuint64(w Encoder, u uint64) (err error) {
+	return w.WriteUint64(u)
 }
 
 func Rawencodecomplex64(w Encoder, c complex64) (err error) {
@@ -152,7 +153,7 @@ func Rawencodestring(w Encoder, s string) (err error) {
 	if err = Rawencodeuint64(w, uint64(len(s))); err != nil {
 		return
 	}
-	_, err = io.WriteString(w, s)
+	err = w.WriteString(s)
 	return
 }
 
@@ -164,7 +165,7 @@ func EncodeSliceOfuint8(w Encoder, v []uint8) (err error) {
 	if err = Rawencodeuint(w, uint(len(v))); err != nil {
 		return
 	}
-	_, err = w.Write(v)
+	err = w.WriteBytes(v)
 	return
 }
 
@@ -350,32 +351,5 @@ func Rawdecodeuintptr(r Decoder, u *uintptr) (err error) {
 		return
 	}
 	*u = uintptr(u64)
-	return
-}
-
-var overflow = errors.New("binary: varint overflows a 64-bit integer")
-
-func Rawdecodeuint64(r Decoder, x *uint64) (err error) {
-	*x = 0
-	var s uint
-	var b byte
-	for i := 0; ; i++ {
-		if b, err = r.ReadByte(); err != nil {
-			return
-		}
-		if err != nil {
-			return
-		}
-		if b < 0x80 {
-			if i > 9 || i == 9 && b > 1 {
-				err = overflow
-				return
-			}
-			*x = *x | uint64(b)<<s
-			return
-		}
-		*x = *x | uint64(b&0x7f)<<s
-		s += 7
-	}
 	return
 }

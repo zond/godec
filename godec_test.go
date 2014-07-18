@@ -2,222 +2,35 @@ package godec
 
 import (
 	"bytes"
-	"encoding/gob"
-	"encoding/json"
-	"fmt"
 	"math/rand"
 	"reflect"
 	"testing"
-
-	binc "github.com/ugorji/go/codec"
-	"github.com/zond/godec/primitives"
 )
 
 func encodeDecode(t *testing.T, src, dst interface{}) {
-	b, err := Marshal(src)
+	buf := &bytes.Buffer{}
+	err := NewEncoder(buf).Encode(src)
 	if err != nil {
 		t.Fatalf("Unable to encode %v: %v", src, err)
-		return
 	}
-	if err = Unmarshal(b, dst); err != nil {
-		t.Fatalf("Unable to decode to %v: %v", reflect.ValueOf(dst).Elem(), err)
+	if err = NewDecoder(buf).Decode(dst); err != nil {
+		t.Fatalf("Unable to decode to %v: %v", reflect.ValueOf(dst).Elem().Interface(), err)
 	}
 	dstElem := reflect.ValueOf(dst).Elem().Interface()
 	if !reflect.DeepEqual(src, dstElem) {
 		t.Fatalf("Encoding/decoding %v produced %v", src, dstElem)
 	}
-}
-
-type marshaller interface {
-	Marshal(interface{}) ([]byte, error)
-	Unmarshal([]byte, interface{}) error
-}
-
-var bigSlice = []string{}
-var bigMap = map[string]string{}
-
-func init() {
-	for i := 0; i < 1000; i++ {
-		s := fmt.Sprintf("String nr %v", i)
-		bigSlice = append(bigSlice, s)
-		bigMap[s] = s
+	b, err := Marshal(src)
+	if err != nil {
+		t.Fatalf("Unable to marshal %v: %v", src, err)
 	}
-}
-
-const (
-	encode = 1 << iota
-	decode
-)
-
-func runBenchMap(b *testing.B, m marshaller) {
-	target := map[string]string{}
-	for i := 0; i < b.N; i++ {
-		res, err := m.Marshal(bigMap)
-		if err != nil {
-			b.Fatalf("%v", err)
-		}
-		if len(res) == 0 {
-			b.Fatalf("Zero marshalling?")
-		}
-		if err = m.Unmarshal(res, &target); err != nil {
-			b.Fatalf("%v", err)
-		}
-		b.StopTimer()
-		if len(bigMap) != len(target) {
-			b.Fatalf("Incorrect unmarshal")
-		}
-		for k, v := range bigMap {
-			if v != target[k] {
-				b.Fatalf("Incorrect unmarshal")
-			}
-		}
-		b.StartTimer()
+	if err = Unmarshal(b, dst); err != nil {
+		t.Fatalf("Unable to unmarshal to %v: %v", dstElem, err)
 	}
-}
-
-func runBenchSlice(b *testing.B, m marshaller, ops int) {
-	var encoded []byte
-	var err error
-	if ops&encode == 0 {
-		b.StopTimer()
-		if encoded, err = m.Marshal(bigSlice); err != nil {
-			b.Fatalf("%v", err)
-		}
-		if len(encoded) == 0 {
-			b.Fatalf("Zero marshalling?")
-		}
-		b.StartTimer()
+	dstElem = reflect.ValueOf(dst).Elem().Interface()
+	if !reflect.DeepEqual(src, dstElem) {
+		t.Fatalf("Marshalling/unmarshalling %v produced %v", src, dstElem)
 	}
-	target := []string{}
-	for i := 0; i < b.N; i++ {
-		if ops&encode == encode {
-			if encoded, err = m.Marshal(bigSlice); err != nil {
-				b.Fatalf("%v", err)
-			}
-			if len(encoded) == 0 {
-				b.Fatalf("Zero marshalling?")
-			}
-		}
-		if ops&decode == decode {
-			if err = m.Unmarshal(encoded, &target); err != nil {
-				b.Fatalf("%v", err)
-			}
-			b.StopTimer()
-			if len(target) != len(bigSlice) {
-				b.Fatalf("Incorrect unmarshal")
-			}
-			for i, v := range target {
-				if bigSlice[i] != v {
-					b.Fatalf("Incorrect unmarshal")
-				}
-			}
-			b.StartTimer()
-		}
-	}
-}
-
-type jsonMarshaller struct{}
-
-func (self jsonMarshaller) Marshal(i interface{}) ([]byte, error) {
-	return json.Marshal(i)
-}
-
-func (self jsonMarshaller) Unmarshal(b []byte, i interface{}) error {
-	return json.Unmarshal(b, i)
-}
-
-var bh binc.BincHandle
-
-type bincMarshaller struct{}
-
-func (self bincMarshaller) Marshal(i interface{}) (b []byte, err error) {
-	if err = binc.NewEncoderBytes(&b, &bh).Encode(i); err != nil {
-		return
-	}
-	return
-}
-
-func (self bincMarshaller) Unmarshal(b []byte, i interface{}) (err error) {
-	if err = binc.NewDecoderBytes(b, &bh).Decode(i); err != nil {
-		return
-	}
-	return
-}
-
-type godecMarshaller struct{}
-
-func (self godecMarshaller) Marshal(i interface{}) (b []byte, err error) {
-	return Marshal(i)
-}
-
-func (self godecMarshaller) Unmarshal(b []byte, i interface{}) (err error) {
-	return Unmarshal(b, i)
-}
-
-type gobMarshaller struct{}
-
-func (self gobMarshaller) Marshal(i interface{}) (b []byte, err error) {
-	buf := &bytes.Buffer{}
-	if err = gob.NewEncoder(buf).Encode(i); err != nil {
-		return
-	}
-	b = buf.Bytes()
-	return
-}
-
-func (self gobMarshaller) Unmarshal(b []byte, i interface{}) (err error) {
-	if err = gob.NewDecoder(bytes.NewBuffer(b)).Decode(i); err != nil {
-		return
-	}
-	return
-}
-
-func BenchmarkJSONStringMap(b *testing.B) {
-	runBenchMap(b, jsonMarshaller{})
-}
-
-func BenchmarkBincStringMap(b *testing.B) {
-	runBenchMap(b, bincMarshaller{})
-}
-
-func BenchmarkGobStringMap(b *testing.B) {
-	runBenchMap(b, gobMarshaller{})
-}
-
-func BenchmarkGodecStringMap(b *testing.B) {
-	runBenchMap(b, godecMarshaller{})
-}
-
-func BenchmarkJSONStringSlice(b *testing.B) {
-	runBenchSlice(b, jsonMarshaller{}, encode|decode)
-}
-
-func BenchmarkBincStringSlice(b *testing.B) {
-	runBenchSlice(b, bincMarshaller{}, encode|decode)
-}
-
-func BenchmarkGobStringSlice(b *testing.B) {
-	runBenchSlice(b, gobMarshaller{}, encode|decode)
-}
-
-func BenchmarkGodecStringSlice(b *testing.B) {
-	runBenchSlice(b, godecMarshaller{}, encode|decode)
-}
-
-func BenchmarkGodecStringSliceEncode(b *testing.B) {
-	runBenchSlice(b, godecMarshaller{}, encode)
-}
-
-func BenchmarkBincStringSliceEncode(b *testing.B) {
-	runBenchSlice(b, bincMarshaller{}, encode)
-}
-
-func BenchmarkGodecStringSliceDecode(b *testing.B) {
-	runBenchSlice(b, godecMarshaller{}, decode)
-}
-
-func BenchmarkBincStringSliceDecode(b *testing.B) {
-	runBenchSlice(b, bincMarshaller{}, decode)
 }
 
 func TestEncodeDecodePrimitiveTypes(t *testing.T) {
@@ -270,36 +83,34 @@ func TestEncodeDecodeSlices(t *testing.T) {
 
 func TestEncodeDecodeUint64(t *testing.T) {
 	for i := 0; i < 1000; i++ {
-		buf := &bytes.Buffer{}
 		i1 := uint64(rand.Int63())
-		if err := primitives.Rawencodeuint64(&Encoder{Writer: buf}, i1); err != nil {
+		b, err := Marshal(i1)
+		if err != nil {
 			t.Fatalf("%v", err)
 		}
 		var i2 uint64
-		by := buf.Bytes()
-		if err := primitives.Rawdecodeuint64(&Decoder{DecodeReader: IODecodeReader{buf}}, &i2); err != nil {
+		if err := Unmarshal(b, &i2); err != nil {
 			t.Fatalf("%v", err)
 		}
 		if i1 != i2 {
-			t.Fatalf("Encoded %v to %v, and decoded that to %v", i1, by, i2)
+			t.Fatalf("Encoded %v to %v, and decoded that to %v", i1, b, i2)
 		}
 	}
 }
 
 func TestEncodeDecodeInt64(t *testing.T) {
 	for i := 0; i < 1000; i++ {
-		buf := &bytes.Buffer{}
 		i1 := rand.Int63()
-		if err := primitives.Rawencodeint64(&Encoder{buf}, i1); err != nil {
+		b, err := Marshal(i1)
+		if err != nil {
 			t.Fatalf("%v", err)
 		}
 		var i2 int64
-		by := buf.Bytes()
-		if err := primitives.Rawdecodeint64(&Decoder{DecodeReader: IODecodeReader{buf}}, &i2); err != nil {
+		if err := Unmarshal(b, &i2); err != nil {
 			t.Fatalf("%v", err)
 		}
 		if i1 != i2 {
-			t.Fatalf("Encoded %v to %v, and decoded that to %v", i1, by, i2)
+			t.Fatalf("Encoded %v to %v, and decoded that to %v", i1, b, i2)
 		}
 	}
 }
