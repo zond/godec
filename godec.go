@@ -4,17 +4,18 @@ import "io"
 
 type bytesEncodeWriter struct {
 	buf []byte
+	pos int
 }
 
 func (self *bytesEncodeWriter) WriteBytes(b []byte) (err error) {
 	l := len(b)
 	self.grow(l)
-	copy(self.buf[len(self.buf)-l:], b)
+	copy(self.buf[self.pos-l:], b)
 	return
 }
 
 func (self *bytesEncodeWriter) WriteUint64(u uint64) (err error) {
-	l := len(self.buf)
+	l := self.pos
 	self.grow(8)
 	self.buf[l] = byte(u >> 56)
 	self.buf[l+1] = byte(u >> 48)
@@ -28,24 +29,24 @@ func (self *bytesEncodeWriter) WriteUint64(u uint64) (err error) {
 }
 
 func (self *bytesEncodeWriter) grow(n int) {
-	if n > cap(self.buf)-len(self.buf) {
-		newBuf := make([]byte, len(self.buf), 2*cap(self.buf)+n)
+	if n+self.pos > len(self.buf) {
+		newBuf := make([]byte, len(self.buf)*2+n)
 		copy(newBuf, self.buf)
 		self.buf = newBuf
 	}
-	self.buf = self.buf[:len(self.buf)+n]
+	self.pos += n
 }
 
 func (self *bytesEncodeWriter) WriteString(s string) (err error) {
 	l := len(s)
 	self.grow(l)
-	copy(self.buf[len(self.buf)-l:], s)
+	copy(self.buf[self.pos-l:], s)
 	return
 }
 
 func Marshal(i interface{}) (result []byte, err error) {
 	w := &bytesEncodeWriter{
-		buf: make([]byte, 0, 1<<6),
+		buf: make([]byte, 1<<6),
 	}
 	enc := &Encoder{
 		EncodeWriter: w,
@@ -53,7 +54,7 @@ func Marshal(i interface{}) (result []byte, err error) {
 	if err = enc.Encode(i); err != nil {
 		return
 	}
-	result = w.buf
+	result = w.buf[:w.pos]
 	return
 }
 
