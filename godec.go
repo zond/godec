@@ -1,10 +1,15 @@
 package godec
 
-import "io"
+import (
+	"encoding/binary"
+	"fmt"
+	"io"
+)
 
 type bytesEncodeWriter struct {
 	buf []byte
 	pos int
+	tmp []byte
 }
 
 func (self *bytesEncodeWriter) WriteBytes(b []byte) (err error) {
@@ -15,16 +20,9 @@ func (self *bytesEncodeWriter) WriteBytes(b []byte) (err error) {
 }
 
 func (self *bytesEncodeWriter) WriteUint64(u uint64) (err error) {
-	l := self.pos
-	self.grow(8)
-	self.buf[l] = byte(u >> 56)
-	self.buf[l+1] = byte(u >> 48)
-	self.buf[l+2] = byte(u >> 40)
-	self.buf[l+3] = byte(u >> 32)
-	self.buf[l+4] = byte(u >> 24)
-	self.buf[l+5] = byte(u >> 16)
-	self.buf[l+6] = byte(u >> 8)
-	self.buf[l+7] = byte(u)
+	wrote := binary.PutUvarint(self.tmp, u)
+	self.grow(wrote)
+	copy(self.buf[self.pos-wrote:], self.tmp[:wrote])
 	return
 }
 
@@ -47,6 +45,7 @@ func (self *bytesEncodeWriter) WriteString(s string) (err error) {
 func Marshal(i interface{}) (result []byte, err error) {
 	w := &bytesEncodeWriter{
 		buf: make([]byte, 1<<6),
+		tmp: make([]byte, binary.MaxVarintLen64),
 	}
 	enc := &Encoder{
 		EncodeWriter: w,
@@ -84,18 +83,20 @@ func (self *bytesDecodeReader) ReadBytes(n int) (result []byte, err error) {
 }
 
 func (self *bytesDecodeReader) ReadUint64() (result uint64, err error) {
-	if self.pos+8 > len(self.buf) {
-		err = io.EOF
+	result, read := binary.Uvarint(self.buf[self.pos:])
+	if read <= 0 {
+		err = fmt.Errorf("Unable to read uint: %v")
 		return
 	}
-	result = uint64(self.buf[self.pos])<<56 + uint64(self.buf[self.pos+1])<<48 + uint64(self.buf[self.pos+2])<<40 + uint64(self.buf[self.pos+3])<<32 + uint64(self.buf[self.pos+4])<<24 + uint64(self.buf[self.pos+5])<<16 + uint64(self.buf[self.pos+6])<<8 + uint64(self.buf[self.pos+7])
-	self.pos += 8
+	self.pos += read
 	return
 }
 
 func Unmarshal(b []byte, i interface{}) (err error) {
 	dec := &Decoder{
-		DecodeReader: &bytesDecodeReader{buf: b},
+		DecodeReader: &bytesDecodeReader{
+			buf: b,
+		},
 	}
 	if err = dec.Decode(i); err != nil {
 		return

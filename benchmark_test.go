@@ -22,7 +22,7 @@ var randomNumbers []uint64
 
 func init() {
 	rand.Seed(0)
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 10000; i++ {
 		s := fmt.Sprintf("String nr %v", i)
 		bigSlice = append(bigSlice, s)
 		bigMap[s] = s
@@ -98,6 +98,21 @@ func runBenchSlice(b *testing.B, m marshaller, ops int) {
 				}
 			}
 			b.StartTimer()
+		}
+	}
+}
+
+func runBenchUint8Encode(b *testing.B, m marshaller) {
+	var by []byte
+	var err error
+	j := 0
+	for i := 0; i < b.N; i++ {
+		if by, err = m.Marshal(uint8(randomNumbers[j])); err != nil {
+			b.Fatalf("%v, %p", err, &by)
+		}
+		j += 1
+		if j >= len(randomNumbers) {
+			j = 0
 		}
 	}
 }
@@ -217,6 +232,14 @@ func BenchmarkGobStringSlice(b *testing.B) {
 
 func BenchmarkGodecStringSlice(b *testing.B) {
 	runBenchSlice(b, godecMarshaller{}, encode|decode)
+}
+
+func BenchmarkGodecUint8Encode(b *testing.B) {
+	runBenchUint8Encode(b, godecMarshaller{})
+}
+
+func BenchmarkBincUint8Encode(b *testing.B) {
+	runBenchUint8Encode(b, bincMarshaller{})
 }
 
 func BenchmarkGodecUint64Encode(b *testing.B) {
