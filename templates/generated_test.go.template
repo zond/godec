@@ -7,7 +7,7 @@ import (
   "testing"
 )
 
-{{range $index, $name := $primitives}}
+{{range $index, $name := $all}}
 func randomSliceOf{{gofilter $name}}Ptr() []*{{$name}} {
   rval := []*{{$name}}{}
 	l := randomuint16() % 512
@@ -20,29 +20,41 @@ func randomSliceOf{{gofilter $name}}Ptr() []*{{$name}} {
 
 func randomSliceOf{{gofilter $name}}() []{{$name}} {
   rval := []{{$name}}{}
-	l := randomuint16() % 512
+	l := randomuint16() % 256
 	for i := uint16(0); i < l; i++ {
 	  rval = append(rval, random{{gofilter $name}}())
 	}
 	return rval
 }
+{{end}}
 
+{{range $index, $name := $primitives}}
 func TestEncodeDecode{{gofilter $name}}(t *testing.T) {
   for i := 0; i < 128; i++ {
 		var dst {{$name}}
 		encodeDecode(t, random{{gofilter $name}}(), &dst)
   }
 }
+{{end}}
+
+{{range $index, $name := $all}}
+func TestEncodeDecode{{gofilter $name}}Ptr(t *testing.T) {
+  for i := 0; i < 128; i++ {
+	  var dst {{$name}}
+		src := random{{gofilter $name}}()
+		encodeDecode(t, &src, &dst)
+  }
+}
 
 func TestEncodeDecodeSliceOf{{gofilter $name}}(t *testing.T) {
-  for i := 0; i < 64; i++ {
+  for i := 0; i < 16; i++ {
 	  var dst []{{$name}}
 		encodeDecode(t, randomSliceOf{{gofilter $name}}(), &dst)
 	}
 }
 
 func TestEncodeDecodeSliceOf{{gofilter $name}}Ptr(t *testing.T) {
-  for i := 0; i < 64; i++ {
+  for i := 0; i < 16; i++ {
 	  var dst []*{{$name}}
 		encodeDecode(t, randomSliceOf{{gofilter $name}}Ptr(), &dst)
 	}

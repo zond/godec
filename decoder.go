@@ -51,7 +51,7 @@ func Unmarshal(b []byte, i interface{}) (err error) {
 	r := &decodeReader{
 		buf: b,
 	}
-	if err = decodeinterface__(r, i); err != nil {
+	if err = decode(r, i); err != nil {
 		return
 	}
 	return
@@ -136,7 +136,51 @@ func decodeSliceOfuint8(r *decodeReader, v *[]uint8) (err error) {
 	return
 }
 
+func decodeinterface__(r *decodeReader, i *interface{}) (err error) {
+	return rawdecodeinterface__(r, i)
+}
+
 func rawdecodeinterface__(r *decodeReader, i *interface{}) (err error) {
+	kind, err := decodeKind(r)
+	if err != nil {
+		return
+	}
+	switch kind {
+	case interface__Kind:
+		err = fmt.Errorf("Unable to decode raw interface to raw interface - and this should never become an issue anyway. This should never happen.")
+	case stringKind:
+		proxy := ""
+		if err = rawdecodestring(r, &proxy); err != nil {
+			return
+		}
+		*i = proxy
+	case intKind:
+		proxy := int64(0)
+		if err = rawdecodeint64(r, &proxy); err != nil {
+			return
+		}
+		*i = proxy
+	case uintKind:
+		proxy := uint64(0)
+		if err = rawdecodeuint64(r, &proxy); err != nil {
+			return
+		}
+		*i = proxy
+	case float64Kind:
+		proxy := float64(0)
+		if err = rawdecodefloat64(r, &proxy); err != nil {
+			return
+		}
+		*i = proxy
+	case complex128Kind:
+		proxy := complex(float64(0), float64(0))
+		if err = rawdecodecomplex128(r, &proxy); err != nil {
+			return
+		}
+		*i = proxy
+	default:
+		err = fmt.Errorf("Unknown kind to decode to interface: %v", kind)
+	}
 	return
 }
 

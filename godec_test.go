@@ -14,6 +14,44 @@ func randombool() bool {
 	return false
 }
 
+func randominterface__() interface{} {
+	switch randomuint8() % 16 {
+	case 0:
+		return randomstring()
+	case 1:
+		return randomfloat64()
+	case 2:
+		return randomfloat32()
+	case 3:
+		return randomcomplex64()
+	case 4:
+		return randomcomplex128()
+	case 5:
+		return randomuintptr()
+	case 6:
+		return randomuint()
+	case 7:
+		return randomint()
+	case 8:
+		return randomint8()
+	case 9:
+		return randomint16()
+	case 10:
+		return randomint32()
+	case 11:
+		return randomint64()
+	case 12:
+		return randomuint8()
+	case 13:
+		return randomuint16()
+	case 14:
+		return randomuint32()
+	case 15:
+		return randomuint64()
+	}
+	panic("wtf")
+}
+
 func randomstring() string {
 	l := rand.Int31() % 4096
 	b := &bytes.Buffer{}
@@ -93,8 +131,12 @@ func encodeDecode(t *testing.T, src, dst interface{}) {
 		t.Fatalf("Unable to decode to %v: %v", reflect.ValueOf(dst).Elem().Interface(), err)
 	}
 	dstElem := reflect.ValueOf(dst).Elem().Interface()
-	if !reflect.DeepEqual(src, dstElem) {
-		t.Fatalf("Encoding/decoding %v produced %v", src, dstElem)
+	toCmp := src
+	if srcVal := reflect.ValueOf(src); srcVal.Kind() == reflect.Ptr {
+		toCmp = srcVal.Elem().Interface()
+	}
+	if !reflect.DeepEqual(toCmp, dstElem) {
+		t.Fatalf("Encoding/decoding %v produced %v", toCmp, dstElem)
 	}
 	b, err := Marshal(src)
 	if err != nil {
@@ -104,8 +146,8 @@ func encodeDecode(t *testing.T, src, dst interface{}) {
 		t.Fatalf("Unable to unmarshal to %v: %v", dstElem, err)
 	}
 	dstElem = reflect.ValueOf(dst).Elem().Interface()
-	if !reflect.DeepEqual(src, dstElem) {
-		t.Fatalf("Marshalling/unmarshalling %v produced %v", src, dstElem)
+	if !reflect.DeepEqual(toCmp, dstElem) {
+		t.Fatalf("Marshalling/unmarshalling %v produced %v", toCmp, dstElem)
 	}
 }
 

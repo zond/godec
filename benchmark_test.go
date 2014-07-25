@@ -33,8 +33,8 @@ func init() {
 }
 
 const (
-	encode = 1 << iota
-	decode
+	doEncode = 1 << iota
+	doDecode
 )
 
 func runBenchMap(b *testing.B, m marshaller) {
@@ -66,7 +66,7 @@ func runBenchMap(b *testing.B, m marshaller) {
 func runBenchIntSlice(b *testing.B, m marshaller, ops int) {
 	var encoded []byte
 	var err error
-	if ops&encode == 0 {
+	if ops&doEncode == 0 {
 		b.StopTimer()
 		if encoded, err = m.Marshal(bigIntSlice); err != nil {
 			b.Fatalf("%v", err)
@@ -78,7 +78,7 @@ func runBenchIntSlice(b *testing.B, m marshaller, ops int) {
 	}
 	target := []int64{}
 	for i := 0; i < b.N; i++ {
-		if ops&encode == encode {
+		if ops&doEncode == doEncode {
 			if encoded, err = m.Marshal(bigIntSlice); err != nil {
 				b.Fatalf("%v", err)
 			}
@@ -86,7 +86,7 @@ func runBenchIntSlice(b *testing.B, m marshaller, ops int) {
 				b.Fatalf("Zero marshalling?")
 			}
 		}
-		if ops&decode == decode {
+		if ops&doDecode == doDecode {
 			if err = m.Unmarshal(encoded, &target); err != nil {
 				b.Fatalf("%v", err)
 			}
@@ -107,7 +107,7 @@ func runBenchIntSlice(b *testing.B, m marshaller, ops int) {
 func runBenchStringSlice(b *testing.B, m marshaller, ops int) {
 	var encoded []byte
 	var err error
-	if ops&encode == 0 {
+	if ops&doEncode == 0 {
 		b.StopTimer()
 		if encoded, err = m.Marshal(bigStringSlice); err != nil {
 			b.Fatalf("%v", err)
@@ -119,7 +119,7 @@ func runBenchStringSlice(b *testing.B, m marshaller, ops int) {
 	}
 	target := []string{}
 	for i := 0; i < b.N; i++ {
-		if ops&encode == encode {
+		if ops&doEncode == doEncode {
 			if encoded, err = m.Marshal(bigStringSlice); err != nil {
 				b.Fatalf("%v", err)
 			}
@@ -127,7 +127,7 @@ func runBenchStringSlice(b *testing.B, m marshaller, ops int) {
 				b.Fatalf("Zero marshalling?")
 			}
 		}
-		if ops&decode == decode {
+		if ops&doDecode == doDecode {
 			if err = m.Unmarshal(encoded, &target); err != nil {
 				b.Fatalf("%v", err)
 			}
@@ -262,19 +262,19 @@ func BenchmarkGodecStringMap(b *testing.B) {
 }
 
 func BenchmarkJSONStringSlice(b *testing.B) {
-	runBenchStringSlice(b, jsonMarshaller{}, encode|decode)
+	runBenchStringSlice(b, jsonMarshaller{}, doEncode|doDecode)
 }
 
 func BenchmarkBincStringSlice(b *testing.B) {
-	runBenchStringSlice(b, bincMarshaller{}, encode|decode)
+	runBenchStringSlice(b, bincMarshaller{}, doEncode|doDecode)
 }
 
 func BenchmarkGobStringSlice(b *testing.B) {
-	runBenchStringSlice(b, gobMarshaller{}, encode|decode)
+	runBenchStringSlice(b, gobMarshaller{}, doEncode|doDecode)
 }
 
 func BenchmarkGodecStringSlice(b *testing.B) {
-	runBenchStringSlice(b, godecMarshaller{}, encode|decode)
+	runBenchStringSlice(b, godecMarshaller{}, doEncode|doDecode)
 }
 
 func BenchmarkGodecUint8Encode(b *testing.B) {
@@ -302,25 +302,25 @@ func BenchmarkBincStringEncode(b *testing.B) {
 }
 
 func BenchmarkGodecIntSliceEncode(b *testing.B) {
-	runBenchIntSlice(b, godecMarshaller{}, encode)
+	runBenchIntSlice(b, godecMarshaller{}, doEncode)
 }
 
 func BenchmarkBincIntSliceEncode(b *testing.B) {
-	runBenchIntSlice(b, bincMarshaller{}, encode)
+	runBenchIntSlice(b, bincMarshaller{}, doEncode)
 }
 
 func BenchmarkGodecStringSliceEncode(b *testing.B) {
-	runBenchStringSlice(b, godecMarshaller{}, encode)
+	runBenchStringSlice(b, godecMarshaller{}, doEncode)
 }
 
 func BenchmarkBincStringSliceEncode(b *testing.B) {
-	runBenchStringSlice(b, bincMarshaller{}, encode)
+	runBenchStringSlice(b, bincMarshaller{}, doEncode)
 }
 
 func BenchmarkGodecStringSliceDecode(b *testing.B) {
-	runBenchStringSlice(b, godecMarshaller{}, decode)
+	runBenchStringSlice(b, godecMarshaller{}, doDecode)
 }
 
 func BenchmarkBincStringSliceDecode(b *testing.B) {
-	runBenchStringSlice(b, bincMarshaller{}, decode)
+	runBenchStringSlice(b, bincMarshaller{}, doDecode)
 }

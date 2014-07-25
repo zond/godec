@@ -270,7 +270,7 @@ func decode{{gofilter $name}}(r *decodeReader, v *{{$name}}) (err error) {
 }
 {{end}}
 
-func decodeinterface__(r *decodeReader, i interface{}) (err error) {
+func decode(r *decodeReader, i interface{}) (err error) {
 	switch v := i.(type) {
 
 	case nil:
