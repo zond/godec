@@ -1,0 +1,50 @@
+package godec
+
+{{ $primitives := .Primitives }}
+{{ $all := .All }}
+
+import (
+  "testing"
+)
+
+{{range $index, $name := $primitives}}
+func randomSliceOf{{gofilter $name}}Ptr() []*{{$name}} {
+  rval := []*{{$name}}{}
+	l := randomuint16() % 512
+	for i := uint16(0); i < l; i++ {
+	  x := random{{gofilter $name}}()
+	  rval = append(rval, &x)
+	}
+	return rval
+}
+
+func randomSliceOf{{gofilter $name}}() []{{$name}} {
+  rval := []{{$name}}{}
+	l := randomuint16() % 512
+	for i := uint16(0); i < l; i++ {
+	  rval = append(rval, random{{gofilter $name}}())
+	}
+	return rval
+}
+
+func TestEncodeDecode{{gofilter $name}}(t *testing.T) {
+  for i := 0; i < 128; i++ {
+		var dst {{$name}}
+		encodeDecode(t, random{{gofilter $name}}(), &dst)
+  }
+}
+
+func TestEncodeDecodeSliceOf{{gofilter $name}}(t *testing.T) {
+  for i := 0; i < 64; i++ {
+	  var dst []{{$name}}
+		encodeDecode(t, randomSliceOf{{gofilter $name}}(), &dst)
+	}
+}
+
+func TestEncodeDecodeSliceOf{{gofilter $name}}Ptr(t *testing.T) {
+  for i := 0; i < 64; i++ {
+	  var dst []*{{$name}}
+		encodeDecode(t, randomSliceOf{{gofilter $name}}Ptr(), &dst)
+	}
+}
+{{end}}

@@ -7,6 +7,82 @@ import (
 	"testing"
 )
 
+func randombool() bool {
+	if rand.Int31n(2) == 0 {
+		return true
+	}
+	return false
+}
+
+func randomstring() string {
+	l := rand.Int31() % 4096
+	b := &bytes.Buffer{}
+	for i := int32(0); i < l; i++ {
+		b.Write([]byte{byte(rand.Int31())})
+	}
+	return b.String()
+}
+
+func randomfloat64() float64 {
+	return float64(rand.Int63()) + rand.NormFloat64()
+}
+
+func randomfloat32() float32 {
+	return float32(randomfloat64())
+}
+
+func randomcomplex64() complex64 {
+	return complex(randomfloat32(), randomfloat32())
+}
+
+func randomcomplex128() complex128 {
+	return complex(randomfloat64(), randomfloat64())
+}
+
+func randomuintptr() uintptr {
+	return uintptr(rand.Int63())
+}
+
+func randomuint() uint {
+	return uint(rand.Int63())
+}
+
+func randomint() int {
+	return int(rand.Int63())
+}
+
+func randomint8() int8 {
+	return int8(rand.Int63())
+}
+
+func randomint16() int16 {
+	return int16(rand.Int63())
+}
+
+func randomint32() int32 {
+	return int32(rand.Int63())
+}
+
+func randomint64() int64 {
+	return int64(rand.Int63())
+}
+
+func randomuint8() uint8 {
+	return uint8(rand.Int63())
+}
+
+func randomuint16() uint16 {
+	return uint16(rand.Int63())
+}
+
+func randomuint32() uint32 {
+	return uint32(rand.Int63())
+}
+
+func randomuint64() uint64 {
+	return uint64(rand.Int63())
+}
+
 func encodeDecode(t *testing.T, src, dst interface{}) {
 	buf := &bytes.Buffer{}
 	err := NewEncoder(buf).Encode(src)
@@ -33,36 +109,6 @@ func encodeDecode(t *testing.T, src, dst interface{}) {
 	}
 }
 
-func TestEncodeDecodePrimitiveTypes(t *testing.T) {
-	var i8 int8
-	encodeDecode(t, int8(5), &i8)
-	encodeDecode(t, int8(84), &i8)
-	var i16 int16
-	encodeDecode(t, int16(5), &i16)
-	encodeDecode(t, int16(84), &i16)
-	var i32 int32
-	encodeDecode(t, int32(5), &i32)
-	encodeDecode(t, int32(84), &i32)
-	var i64 int64
-	encodeDecode(t, int64(5), &i64)
-	encodeDecode(t, int64(84), &i64)
-	var f32 float32
-	encodeDecode(t, float32(5.56), &f32)
-	encodeDecode(t, float32(8484.0004), &f32)
-	var f64 float64
-	encodeDecode(t, float64(5.56), &f64)
-	encodeDecode(t, float64(8484.0004), &f64)
-	var c64 complex64
-	encodeDecode(t, complex(float32(5.56), float32(5.1)), &c64)
-	encodeDecode(t, complex(float32(4.11), float32(63.11)), &c64)
-	var c128 complex128
-	encodeDecode(t, complex(float64(5.56), float64(5.1)), &c128)
-	encodeDecode(t, complex(float64(4.11), float64(63.11)), &c128)
-	var b bool
-	encodeDecode(t, true, &b)
-	encodeDecode(t, false, &b)
-}
-
 func TestEncodeDecodeMaps(t *testing.T) {
 	var mSI map[string]int
 	encodeDecode(t, map[string]int{"hej": 1, "haha": 2}, &mSI)
@@ -70,47 +116,4 @@ func TestEncodeDecodeMaps(t *testing.T) {
 	var mIB map[int]bool
 	encodeDecode(t, map[int]bool{44: true, 52: false}, &mIB)
 	encodeDecode(t, map[int]bool{442: true, 523: true}, &mIB)
-}
-
-func TestEncodeDecodeSlices(t *testing.T) {
-	var sS []string
-	encodeDecode(t, []string{"hehu", "hepp"}, &sS)
-	encodeDecode(t, []string{"kala", "bapa"}, &sS)
-	var sI32 []int32
-	encodeDecode(t, []int32{33, 44, 56, 1}, &sI32)
-	encodeDecode(t, []int32{1, 2, 3}, &sI32)
-}
-
-func TestEncodeDecodeUint64(t *testing.T) {
-	for i := 0; i < 1000; i++ {
-		i1 := uint64(rand.Int63())
-		b, err := Marshal(i1)
-		if err != nil {
-			t.Fatalf("%v", err)
-		}
-		var i2 uint64
-		if err := Unmarshal(b, &i2); err != nil {
-			t.Fatalf("%v", err)
-		}
-		if i1 != i2 {
-			t.Fatalf("Encoded %v to %v, and decoded that to %v", i1, b, i2)
-		}
-	}
-}
-
-func TestEncodeDecodeInt64(t *testing.T) {
-	for i := 0; i < 1000; i++ {
-		i1 := rand.Int63()
-		b, err := Marshal(i1)
-		if err != nil {
-			t.Fatalf("%v", err)
-		}
-		var i2 int64
-		if err := Unmarshal(b, &i2); err != nil {
-			t.Fatalf("%v", err)
-		}
-		if i1 != i2 {
-			t.Fatalf("Encoded %v to %v, and decoded that to %v", i1, b, i2)
-		}
-	}
 }

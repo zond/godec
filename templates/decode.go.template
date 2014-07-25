@@ -1,4 +1,4 @@
-package primitives
+package godec
 
 {{ $primitives := .Primitives }}
 {{ $all := .All }}
@@ -12,8 +12,8 @@ import (
 // But we skip []byte, because they are so darn simple to encode that we do it in another explicit function.
 {{range $index, $name := $all}}
 {{if ne $name "uint8"}}
-func DecodeSliceOf{{gofilter $name}}(r Decoder, v *[]{{$name}}) (err error) {
-	kind, err := DecodeKind(r)
+func decodeSliceOf{{gofilter $name}}(r *decodeReader, v *[]{{$name}}) (err error) {
+	kind, err := decodeKind(r)
 	if err != nil {
 		return
 	}
@@ -21,7 +21,7 @@ func DecodeSliceOf{{gofilter $name}}(r Decoder, v *[]{{$name}}) (err error) {
 		err = fmt.Errorf("Unable to decode %v into *{{$name}}", kind)
 		return
 	}
-	elkind, err := DecodeKind(r)
+	elkind, err := decodeKind(r)
 	if err != nil {
 		return
 	}
@@ -30,12 +30,12 @@ func DecodeSliceOf{{gofilter $name}}(r Decoder, v *[]{{$name}}) (err error) {
 		return
 	}
 	var l uint
-	if err = Rawdecodeuint(r, &l); err != nil {
+	if err = rawdecodeuint(r, &l); err != nil {
 		return
 	}
 	*v = make([]{{$name}}, int(l))
 	for index, _ := range *v {
-		if err = Rawdecode{{gofilter $name}}(r, &((*v)[index])); err != nil {
+		if err = rawdecode{{gofilter $name}}(r, &((*v)[index])); err != nil {
 			return
 		}
 	}
@@ -43,8 +43,8 @@ func DecodeSliceOf{{gofilter $name}}(r Decoder, v *[]{{$name}}) (err error) {
 }
 {{end}}
 
-func DecodeSliceOf{{gofilter $name}}Ptr(r Decoder, v *[]*{{$name}}) (err error) {
-	kind, err := DecodeKind(r)
+func decodeSliceOf{{gofilter $name}}Ptr(r *decodeReader, v *[]*{{$name}}) (err error) {
+	kind, err := decodeKind(r)
 	if err != nil {
 		return
 	}
@@ -52,7 +52,7 @@ func DecodeSliceOf{{gofilter $name}}Ptr(r Decoder, v *[]*{{$name}}) (err error) 
 		err = fmt.Errorf("Unable to decode %v into *{{$name}}", kind)
 		return
 	}
-	elkind, err := DecodeKind(r)
+	elkind, err := decodeKind(r)
 	if err != nil {
 		return
 	}
@@ -61,13 +61,13 @@ func DecodeSliceOf{{gofilter $name}}Ptr(r Decoder, v *[]*{{$name}}) (err error) 
 		return
 	}
 	var l uint
-	if err = Rawdecodeuint(r, &l); err != nil {
+	if err = rawdecodeuint(r, &l); err != nil {
 		return
 	}
 	*v = make([]*{{$name}}, int(l))
 	for index, _ := range *v {
 		var el {{$name}}
-		if err = Rawdecode{{gofilter $name}}(r, &el); err != nil {
+		if err = rawdecode{{gofilter $name}}(r, &el); err != nil {
 			return
 		}
 		(*v)[index] = &el
@@ -78,8 +78,8 @@ func DecodeSliceOf{{gofilter $name}}Ptr(r Decoder, v *[]*{{$name}}) (err error) 
 
 // All maps are decoded by verifying that the encoded kind is reflect.Map, and that the key and value kinds are the same, then reading the raw data.
 {{range $index1, $name1 := $all}}{{range $index2, $name2 := $all}}
-func DecodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(r Decoder, v *map[{{$name1}}]{{$name2}}) (err error) {
-  kind, err := DecodeKind(r)
+func decodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(r *decodeReader, v *map[{{$name1}}]{{$name2}}) (err error) {
+  kind, err := decodeKind(r)
 	if err != nil {
 		return
 	}
@@ -87,7 +87,7 @@ func DecodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(r Decoder, v *map[{{$na
 		err = fmt.Errorf("Unable to decode %v into *map[{{$name1}}][{{$name2}}", kind)
 		return
 	}
-	keyKind, err := DecodeKind(r)
+	keyKind, err := decodeKind(r)
 	if err != nil {
 		return
 	}
@@ -95,7 +95,7 @@ func DecodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(r Decoder, v *map[{{$na
 	  err = fmt.Errorf("Unable to decode %v into {{$name1}}", keyKind)
 		return
 	}
-	valueKind, err := DecodeKind(r)
+	valueKind, err := decodeKind(r)
 	if err != nil {
 		return
 	}
@@ -104,17 +104,17 @@ func DecodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(r Decoder, v *map[{{$na
 		return
 	}
 	var l uint
-	if err = Rawdecodeuint(r, &l); err != nil {
+	if err = rawdecodeuint(r, &l); err != nil {
 		return
 	}
 	*v = make(map[{{$name1}}]{{$name2}}, int(l))
 	for i := uint(0); i < l; i++ {
 		var key {{$name1}}
-		if err = Rawdecode{{gofilter $name1}}(r, &key); err != nil {
+		if err = rawdecode{{gofilter $name1}}(r, &key); err != nil {
 			return
 		}
 		var value {{$name2}}
-		if err = Rawdecode{{gofilter $name2}}(r, &value); err != nil {
+		if err = rawdecode{{gofilter $name2}}(r, &value); err != nil {
 			return
 		}
 		(*v)[key] = value
@@ -122,8 +122,8 @@ func DecodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(r Decoder, v *map[{{$na
 	return
 }
 
-func DecodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(r Decoder, v *map[*{{$name1}}]{{$name2}}) (err error) {
-  kind, err := DecodeKind(r)
+func decodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(r *decodeReader, v *map[*{{$name1}}]{{$name2}}) (err error) {
+  kind, err := decodeKind(r)
 	if err != nil {
 		return
 	}
@@ -131,7 +131,7 @@ func DecodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(r Decoder, v *map[*{
 		err = fmt.Errorf("Unable to decode %v into *map[*{{$name1}}][{{$name2}}", kind)
 		return
 	}
-	keyKind, err := DecodeKind(r)
+	keyKind, err := decodeKind(r)
 	if err != nil {
 		return
 	}
@@ -139,7 +139,7 @@ func DecodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(r Decoder, v *map[*{
 	  err = fmt.Errorf("Unable to decode %v into {{$name1}}", keyKind)
 		return
 	}
-	valueKind, err := DecodeKind(r)
+	valueKind, err := decodeKind(r)
 	if err != nil {
 		return
 	}
@@ -148,17 +148,17 @@ func DecodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(r Decoder, v *map[*{
 		return
 	}
 	var l uint
-	if err = Rawdecodeuint(r, &l); err != nil {
+	if err = rawdecodeuint(r, &l); err != nil {
 		return
 	}
 	*v = make(map[*{{$name1}}]{{$name2}}, int(l))
 	for i := uint(0); i < l; i++ {
 		var key {{$name1}}
-		if err = Rawdecode{{gofilter $name1}}(r, &key); err != nil {
+		if err = rawdecode{{gofilter $name1}}(r, &key); err != nil {
 			return
 		}
 		var value {{$name2}}
-		if err = Rawdecode{{gofilter $name2}}(r, &value); err != nil {
+		if err = rawdecode{{gofilter $name2}}(r, &value); err != nil {
 			return
 		}
 		(*v)[&key] = value
@@ -166,8 +166,8 @@ func DecodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(r Decoder, v *map[*{
 	return
 }
 
-func DecodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(r Decoder, v *map[{{$name1}}]*{{$name2}}) (err error) {
-  kind, err := DecodeKind(r)
+func decodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(r *decodeReader, v *map[{{$name1}}]*{{$name2}}) (err error) {
+  kind, err := decodeKind(r)
 	if err != nil {
 		return
 	}
@@ -175,7 +175,7 @@ func DecodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(r Decoder, v *map[{{
 		err = fmt.Errorf("Unable to decode %v into *map[*{{$name1}}][{{$name2}}", kind)
 		return
 	}
-	keyKind, err := DecodeKind(r)
+	keyKind, err := decodeKind(r)
 	if err != nil {
 		return
 	}
@@ -183,7 +183,7 @@ func DecodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(r Decoder, v *map[{{
 	  err = fmt.Errorf("Unable to decode %v into {{$name1}}", keyKind)
 		return
 	}
-	valueKind, err := DecodeKind(r)
+	valueKind, err := decodeKind(r)
 	if err != nil {
 		return
 	}
@@ -192,17 +192,17 @@ func DecodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(r Decoder, v *map[{{
 		return
 	}
 	var l uint
-	if err = Rawdecodeuint(r, &l); err != nil {
+	if err = rawdecodeuint(r, &l); err != nil {
 		return
 	}
 	*v = make(map[{{$name1}}]*{{$name2}}, int(l))
 	for i := uint(0); i < l; i++ {
 		var key {{$name1}}
-		if err = Rawdecode{{gofilter $name1}}(r, &key); err != nil {
+		if err = rawdecode{{gofilter $name1}}(r, &key); err != nil {
 			return
 		}
 		var value {{$name2}}
-		if err = Rawdecode{{gofilter $name2}}(r, &value); err != nil {
+		if err = rawdecode{{gofilter $name2}}(r, &value); err != nil {
 			return
 		}
 		(*v)[key] = &value
@@ -210,8 +210,8 @@ func DecodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(r Decoder, v *map[{{
 	return
 }
 
-func DecodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(r Decoder, v *map[*{{$name1}}]*{{$name2}}) (err error) {
-  kind, err := DecodeKind(r)
+func decodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(r *decodeReader, v *map[*{{$name1}}]*{{$name2}}) (err error) {
+  kind, err := decodeKind(r)
 	if err != nil {
 		return
 	}
@@ -219,7 +219,7 @@ func DecodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(r Decoder, v *map
 		err = fmt.Errorf("Unable to decode %v into *map[*{{$name1}}][{{$name2}}", kind)
 		return
 	}
-	keyKind, err := DecodeKind(r)
+	keyKind, err := decodeKind(r)
 	if err != nil {
 		return
 	}
@@ -227,7 +227,7 @@ func DecodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(r Decoder, v *map
 	  err = fmt.Errorf("Unable to decode %v into {{$name1}}", keyKind)
 		return
 	}
-	valueKind, err := DecodeKind(r)
+	valueKind, err := decodeKind(r)
 	if err != nil {
 		return
 	}
@@ -236,17 +236,17 @@ func DecodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(r Decoder, v *map
 		return
 	}
 	var l uint
-	if err = Rawdecodeuint(r, &l); err != nil {
+	if err = rawdecodeuint(r, &l); err != nil {
 		return
 	}
 	*v = make(map[*{{$name1}}]*{{$name2}}, int(l))
 	for i := uint(0); i < l; i++ {
 		var key {{$name1}}
-		if err = Rawdecode{{gofilter $name1}}(r, &key); err != nil {
+		if err = rawdecode{{gofilter $name1}}(r, &key); err != nil {
 			return
 		}
 		var value {{$name2}}
-		if err = Rawdecode{{gofilter $name2}}(r, &value); err != nil {
+		if err = rawdecode{{gofilter $name2}}(r, &value); err != nil {
 			return
 		}
 		(*v)[&key] = &value
@@ -257,8 +257,8 @@ func DecodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(r Decoder, v *map
 
 // All primitive types are parsed by verifying that the encoded kind makes sense, and then parsing their raw data
 {{range $index, $name := $primitives}}
-func Decode{{gofilter $name}}(r Decoder, v *{{$name}}) (err error) {
-	kind, err := DecodeKind(r)
+func decode{{gofilter $name}}(r *decodeReader, v *{{$name}}) (err error) {
+	kind, err := decodeKind(r)
 	if err != nil {
 		return
 	}
@@ -266,40 +266,40 @@ func Decode{{gofilter $name}}(r Decoder, v *{{$name}}) (err error) {
 		err = fmt.Errorf("Unable to decode %v into *{{$name}}", kind)
 		return
 	}
-	return Rawdecode{{gofilter $name}}(r, v)
+	return rawdecode{{gofilter $name}}(r, v)
 }
 {{end}}
 
-func Decodeinterface__(r Decoder, i interface{}) (err error) {
+func decodeinterface__(r *decodeReader, i interface{}) (err error) {
 	switch v := i.(type) {
 
 	case nil:
 		err = fmt.Errorf("Unable to decode to nil pointer")
 {{range $index, $name := $all}}
 	case *{{$name}}:
-		return Decode{{gofilter $name}}(r, v)
+		return decode{{gofilter $name}}(r, v)
 {{end}}
 {{range $index, $name := $all}}
 	case *[]{{$name}}:
-		return DecodeSliceOf{{gofilter $name}}(r, v)
+		return decodeSliceOf{{gofilter $name}}(r, v)
 	case *[]*{{$name}}:
-		return DecodeSliceOf{{gofilter $name}}Ptr(r, v)
+		return decodeSliceOf{{gofilter $name}}Ptr(r, v)
 {{end}}
 {{range $index1, $name1 := $all}}
 {{range $index2, $name2 := $all}}
 	case *map[{{$name1}}]{{$name2}}:
-		return DecodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(r, v)
+		return decodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(r, v)
 	case *map[*{{$name1}}]{{$name2}}:
-		return DecodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(r, v)
+		return decodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(r, v)
 	case *map[{{$name1}}]*{{$name2}}:
-		return DecodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(r, v)
+		return decodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(r, v)
 	case *map[*{{$name1}}]*{{$name2}}:
-		return DecodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(r, v)
+		return decodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(r, v)
 {{end}}
 {{end}}
 // Finally, the default will use the magical mystery powers of reflect to encode whatever we encounter.
 	default:
-		return r.DecodeReflectValue(reflect.ValueOf(i))
+		//return r.decodeReflectValue(reflect.ValueOf(i))
   }
 	
 	return

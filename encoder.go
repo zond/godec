@@ -1,58 +1,193 @@
 package godec
 
 import (
+	"encoding/binary"
 	"io"
+	"math"
 	"reflect"
-
-	"github.com/zond/godec/primitives"
 )
 
-type ioEncodeWriter struct {
-	io.Writer
+type encodeWriter struct {
+	buf []byte
+	pos int
 }
 
-func (self ioEncodeWriter) WriteBytes(b []byte) (err error) {
-	_, err = self.Writer.Write(b)
+func newEncodeWriter() *encodeWriter {
+	return &encodeWriter{
+		buf: make([]byte, 1<<6),
+	}
+}
+
+func (self *encodeWriter) writeBytes(b []byte) (err error) {
+	l := len(b)
+	self.grow(l)
+	copy(self.buf[self.pos:], b)
+	self.pos += l
 	return
 }
 
-func (self ioEncodeWriter) WriteByte(b byte) (err error) {
-	_, err = self.Writer.Write([]byte{b})
+func (self *encodeWriter) writeUint64(u uint64) (err error) {
+	self.grow(binary.MaxVarintLen64)
+	wrote := binary.PutUvarint(self.buf[self.pos:], u)
+	self.pos += wrote
 	return
 }
 
-func (self ioEncodeWriter) WriteString(s string) (err error) {
-	_, err = io.WriteString(self.Writer, s)
+func (self *encodeWriter) grow(n int) {
+	if n+self.pos > len(self.buf) {
+		newBuf := make([]byte, len(self.buf)*2+n)
+		copy(newBuf, self.buf)
+		self.buf = newBuf
+	}
+}
+
+func (self *encodeWriter) writeString(s string) (err error) {
+	l := len(s)
+	self.grow(l)
+	copy(self.buf[self.pos:], s)
+	self.pos += l
 	return
 }
 
-func (self ioEncodeWriter) WriteUint64(u uint64) (err error) {
-	return self.WriteBytes([]byte{
-		byte(u >> 56),
-		byte(u >> 48),
-		byte(u >> 40),
-		byte(u >> 32),
-		byte(u >> 24),
-		byte(u >> 16),
-		byte(u >> 8),
-		byte(u),
-	})
+func Marshal(i interface{}) (result []byte, err error) {
+	w := &encodeWriter{
+		buf: make([]byte, 1<<6),
+	}
+	if err = encodeinterface__(w, i); err != nil {
+		return
+	}
+	result = w.buf[:w.pos]
+	return
 }
 
 type Encoder struct {
-	primitives.EncodeWriter
+	writer io.Writer
 }
 
 func NewEncoder(w io.Writer) *Encoder {
 	return &Encoder{
-		EncodeWriter: ioEncodeWriter{w},
+		writer: w,
 	}
 }
 
-func (self *Encoder) EncodeReflectValue(v reflect.Value) (err error) {
+func (self *Encoder) Encode(i interface{}) (err error) {
+	b, err := Marshal(i)
+	if err != nil {
+		return
+	}
+	lb := make([]byte, binary.MaxVarintLen64)
+	wrote := binary.PutUvarint(lb, uint64(len(b)))
+	if _, err = self.writer.Write(lb[:wrote]); err != nil {
+		return
+	}
+	if _, err = self.writer.Write(b); err != nil {
+		return
+	}
 	return
 }
 
-func (self *Encoder) Encode(i interface{}) (err error) {
-	return primitives.Encodeinterface__(self, i)
+func encodeKind(w *encodeWriter, k reflect.Kind) (err error) {
+	return rawencodeuint64(w, uint64(k))
+}
+
+func rawencodeinterface__(w *encodeWriter, v interface{}) (err error) {
+	return encodeinterface__(w, v)
+}
+
+func rawencodestring(w *encodeWriter, s string) (err error) {
+	if err = rawencodeuint64(w, uint64(len(s))); err != nil {
+		return
+	}
+	err = w.writeString(s)
+	return
+}
+
+// The special case for byte slices is here, and we treat byte slices exactly like strings.
+func encodeSliceOfuint8(w *encodeWriter, v []uint8) (err error) {
+	if err = encodeKind(w, stringKind); err != nil {
+		return
+	}
+	if err = rawencodeuint(w, uint(len(v))); err != nil {
+		return
+	}
+	err = w.writeBytes(v)
+	return
+}
+
+func rawencodebool(w *encodeWriter, b bool) (err error) {
+	if b {
+		return rawencodeuint64(w, 1)
+	} else {
+		return rawencodeuint64(w, 0)
+	}
+}
+
+func rawencodefloat32(w *encodeWriter, f float32) (err error) {
+	return rawencodeuint64(w, uint64(math.Float32bits(f)))
+}
+
+func rawencodefloat64(w *encodeWriter, f float64) (err error) {
+	return rawencodeuint64(w, math.Float64bits(f))
+}
+
+func rawencodeint(w *encodeWriter, u int) (err error) {
+	return rawencodeint64(w, int64(u))
+}
+
+func rawencodeint8(w *encodeWriter, u int8) (err error) {
+	return rawencodeint64(w, int64(u))
+}
+
+func rawencodeint16(w *encodeWriter, u int16) (err error) {
+	return rawencodeint64(w, int64(u))
+}
+
+func rawencodeint32(w *encodeWriter, u int32) (err error) {
+	return rawencodeint64(w, int64(u))
+}
+
+func rawencodeuintptr(w *encodeWriter, u uintptr) (err error) {
+	return rawencodeuint64(w, uint64(u))
+}
+
+func rawencodeuint(w *encodeWriter, u uint) (err error) {
+	return rawencodeuint64(w, uint64(u))
+}
+
+func rawencodeuint8(w *encodeWriter, u uint8) (err error) {
+	return rawencodeuint64(w, uint64(u))
+}
+
+func rawencodeuint16(w *encodeWriter, u uint16) (err error) {
+	return rawencodeuint64(w, uint64(u))
+}
+
+func rawencodeuint32(w *encodeWriter, u uint32) (err error) {
+	return rawencodeuint64(w, uint64(u))
+}
+
+func rawencodeint64(w *encodeWriter, i int64) (err error) {
+	ux := uint64(i) << 1
+	if i < 0 {
+		ux = ^ux
+	}
+	return rawencodeuint64(w, ux)
+}
+
+func rawencodeuint64(w *encodeWriter, u uint64) (err error) {
+	return w.writeUint64(u)
+}
+
+func rawencodecomplex64(w *encodeWriter, c complex64) (err error) {
+	if err = rawencodefloat64(w, float64(real(c))); err != nil {
+		return
+	}
+	return rawencodefloat64(w, float64(imag(c)))
+}
+
+func rawencodecomplex128(w *encodeWriter, c complex128) (err error) {
+	if err = rawencodefloat64(w, real(c)); err != nil {
+		return
+	}
+	return rawencodefloat64(w, imag(c))
 }
