@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-{{range $index, $name := $pointerEncodeable}}
+{{range $index, $name := $decodeable}}
 func randomSliceOf{{gofilter $name}}Ptr() []*{{$name}} {
   rval := []*{{$name}}{}
 	l := randomuint16() % 512
@@ -32,6 +32,48 @@ func randomSliceOf{{gofilter $name}}() []{{$name}} {
 	}
 	return rval
 }
+
+{{range $index2, $name2 := $decodeable}}
+func randomMapOf{{gofilter $name}}To{{gofilter $name2}}() map[{{$name}}]{{$name2}} {
+  rval := map[{{$name}}]{{$name2}}{}
+	l := randomuint16() % 512
+	for i := uint16(0); i < l; i++ {
+	  rval[random{{gofilter $name}}()] = random{{gofilter $name2}}()
+	}
+	return rval
+}
+
+func randomMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}() map[*{{$name}}]{{$name2}} {
+  rval := map[*{{$name}}]{{$name2}}{}
+	l := randomuint16() % 512
+	for i := uint16(0); i < l; i++ {
+	  key := random{{gofilter $name}}()
+	  rval[&key] = random{{gofilter $name2}}()
+	}
+	return rval
+}
+
+func randomMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}Ptr() map[*{{$name}}]*{{$name2}} {
+  rval := map[*{{$name}}]*{{$name2}}{}
+	l := randomuint16() % 512
+	for i := uint16(0); i < l; i++ {
+	  key := random{{gofilter $name}}() 
+		val := random{{gofilter $name2}}()
+	  rval[&key] = &val
+	}
+	return rval
+}
+
+func randomMapOf{{gofilter $name}}To{{gofilter $name2}}Ptr() map[{{$name}}]*{{$name2}} {
+  rval := map[{{$name}}]*{{$name2}}{}
+	l := randomuint16() % 512
+	for i := uint16(0); i < l; i++ {
+		val := random{{gofilter $name2}}()
+	  rval[random{{gofilter $name}}()] = &val
+	}
+	return rval
+}
+{{end}}
 {{end}}
 
 {{range $index, $name := $decodeable}}
@@ -41,9 +83,7 @@ func TestEncodeDecode{{gofilter $name}}(t *testing.T) {
 		encodeDecode(t, random{{gofilter $name}}(), &dst)
   }
 }
-{{end}}
 
-{{range $index, $name := $decodeable}}
 func TestEncodeDecode{{gofilter $name}}Ptr(t *testing.T) {
   for i := 0; i < Runs * 128; i++ {
 	  var dst {{$name}}
@@ -65,4 +105,84 @@ func TestEncodeDecodeSliceOf{{gofilter $name}}Ptr(t *testing.T) {
 		encodeDecode(t, randomSliceOf{{gofilter $name}}Ptr(), &dst)
 	}
 }
+
+func TestEncodeDecodePtrToSliceOf{{gofilter $name}}(t *testing.T) {
+  for i := 0; i < Runs * 16; i++ {
+	  var dst []{{$name}}
+		src := randomSliceOf{{gofilter $name}}()
+		encodeDecode(t, &src, &dst)
+	}
+}
+
+func TestEncodeDecodePtrToSliceOf{{gofilter $name}}Ptr(t *testing.T) {
+  for i := 0; i < Runs * 16; i++ {
+	  var dst []*{{$name}}
+		src := randomSliceOf{{gofilter $name}}Ptr()
+		encodeDecode(t, &src, &dst)
+	}
+}
+
+{{range $index2, $name2 := $decodeable}}
+func TestEncodeDecodeMapOf{{gofilter $name}}To{{gofilter $name2}}(t *testing.T) {
+  for i := 0; i < Runs * 16; i++ {
+	  var dst map[{{$name}}]{{$name2}}
+		encodeDecode(t, randomMapOf{{gofilter $name}}To{{gofilter $name2}}(), &dst)
+	}
+}
+
+func TestEncodeDecodeMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}(t *testing.T) {
+  for i := 0; i < Runs * 16; i++ {
+	  var dst map[*{{$name}}]{{$name2}}
+		encodeDecode(t, randomMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}(), &dst)
+	}
+}
+
+func TestEncodeDecodeMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}Ptr(t *testing.T) {
+  for i := 0; i < Runs * 16; i++ {
+	  var dst map[*{{$name}}]*{{$name2}}
+		encodeDecode(t, randomMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}Ptr(), &dst)
+	}
+}
+
+func TestEncodeDecodeMapOf{{gofilter $name}}To{{gofilter $name2}}Ptr(t *testing.T) {
+  for i := 0; i < Runs * 16; i++ {
+	  var dst map[{{$name}}]*{{$name2}}
+		encodeDecode(t, randomMapOf{{gofilter $name}}To{{gofilter $name2}}Ptr(), &dst)
+	}
+}
+
+func TestEncodeDecodePtrToMapOf{{gofilter $name}}To{{gofilter $name2}}(t *testing.T) {
+  for i := 0; i < Runs * 16; i++ {
+	  var dst map[{{$name}}]{{$name2}}
+		src := randomMapOf{{gofilter $name}}To{{gofilter $name2}}()
+		encodeDecode(t, &src, &dst)
+	}
+}
+
+func TestEncodeDecodePtrToMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}(t *testing.T) {
+  for i := 0; i < Runs * 16; i++ {
+	  var dst map[*{{$name}}]{{$name2}}
+		src := randomMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}()
+		encodeDecode(t, &src, &dst)
+	}
+}
+
+func TestEncodeDecodePtrToMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}Ptr(t *testing.T) {
+  for i := 0; i < Runs * 16; i++ {
+	  var dst map[*{{$name}}]*{{$name2}}
+		src := randomMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}Ptr()
+		encodeDecode(t, &src, &dst)
+	}
+}
+
+func TestEncodeDecodePtrToMapOf{{gofilter $name}}To{{gofilter $name2}}Ptr(t *testing.T) {
+  for i := 0; i < Runs * 16; i++ {
+	  var dst map[{{$name}}]*{{$name2}}
+		src := randomMapOf{{gofilter $name}}To{{gofilter $name2}}Ptr()
+		encodeDecode(t, &src, &dst)
+	}
+}
 {{end}}
+{{end}}
+
+
