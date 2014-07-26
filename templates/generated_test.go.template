@@ -1,14 +1,19 @@
 package godec
 
-{{ $primitives := .Primitives }}
-{{ $all := .All }}
+{{ $encodeable := .Encodeable }}
+{{ $pointerEncodeable := .PointerEncodeable }}
+{{ $sliceEncodeable := .SliceEncodeable }}
+{{ $mapEncodeable := .MapEncodeable }}
+{{ $decodeable := .Decodeable }}
+{{ $sliceDecodeable := .SliceDecodeable }}
+{{ $mapDecodeable := .MapDencodeable }}
 
 import (
   "testing"
 	"time"
 )
 
-{{range $index, $name := $all}}
+{{range $index, $name := $pointerEncodeable}}
 func randomSliceOf{{gofilter $name}}Ptr() []*{{$name}} {
   rval := []*{{$name}}{}
 	l := randomuint16() % 512
@@ -29,7 +34,7 @@ func randomSliceOf{{gofilter $name}}() []{{$name}} {
 }
 {{end}}
 
-{{range $index, $name := $primitives}}
+{{range $index, $name := $decodeable}}
 func TestEncodeDecode{{gofilter $name}}(t *testing.T) {
   for i := 0; i < Runs * 128; i++ {
 		var dst {{$name}}
@@ -38,7 +43,7 @@ func TestEncodeDecode{{gofilter $name}}(t *testing.T) {
 }
 {{end}}
 
-{{range $index, $name := $all}}
+{{range $index, $name := $decodeable}}
 func TestEncodeDecode{{gofilter $name}}Ptr(t *testing.T) {
   for i := 0; i < Runs * 128; i++ {
 	  var dst {{$name}}

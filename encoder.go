@@ -1,6 +1,7 @@
 package godec
 
 import (
+	"encoding"
 	"encoding/binary"
 	"io"
 	"math"
@@ -92,6 +93,23 @@ func encodeKind(w *encodeWriter, k Kind) (err error) {
 
 func rawencodetime_Time(w *encodeWriter, t time.Time) (err error) {
 	return rawencodeint64(w, t.UnixNano())
+}
+
+func encodebinary_Marshaler(w *encodeWriter, bm encoding.BinaryMarshaler) (err error) {
+	if err = encodeKind(w, binaryUnMarshalerKind); err != nil {
+		return
+	}
+	b, err := bm.MarshalBinary()
+	if err != nil {
+		return
+	}
+	if err = rawencodeuint(w, uint(len(b))); err != nil {
+		return
+	}
+	if err = w.writeBytes(b); err != nil {
+		return
+	}
+	return
 }
 
 func rawencodeinterface__(w *encodeWriter, v interface{}) (err error) {

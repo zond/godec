@@ -1,17 +1,19 @@
 package godec
 
-{{ $primitives := .Primitives }}
-{{ $all := .All }}
+{{ $encodeable := .Encodeable }}
+{{ $pointerEncodeable := .PointerEncodeable }}
+{{ $sliceEncodeable := .SliceEncodeable }}
+{{ $mapEncodeable := .MapEncodeable }}
 
 import (
-		"time"
+	"time"
+	"encoding"
 )
-
 
 // All slices are encoded by encoding sliceKind, the element kind, the length, and then all elements.
 // If the elements are pointers, the element kind is bitwise ORed with reflect.Ptr.
 // But we skip []byte, because they are so darn simple to encode that we do it in another explicit function.
-{{range $index, $name := $all}}
+{{range $index, $name := $sliceEncodeable}}
 {{if ne $name "uint8"}}
 func encodeSliceOf{{gofilter $name}}(w *encodeWriter, v []{{$name}}) (err error) {
 	if err = encodeKind(w, sliceKind); err != nil {
@@ -53,7 +55,7 @@ func encodeSliceOf{{gofilter $name}}Ptr(w *encodeWriter, v []*{{$name}}) (err er
 
 // All maps are encoded by encoding mapKind, the key kind, the value kind and the length. Then all k/v pairs.
 // If element types are pointers, the element kind is bitwise ORed with reflect.Ptr.
-{{range $index1, $name1 := $all}}{{range $index2, $name2 := $all}}
+{{range $index1, $name1 := $mapEncodeable}}{{range $index2, $name2 := $mapEncodeable}}
 func encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w *encodeWriter, v map[{{$name1}}]{{$name2}}) (err error) {
 	if err = encodeKind(w, mapKind); err != nil {
 		return
@@ -152,7 +154,7 @@ func encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w *encodeWriter, 
 {{end}}{{end}}
 
 // All primitive types are expressed as encoding their kind and then their raw data
-{{range $index, $name := $primitives}}
+{{range $index, $name := $encodeable}}
 func encode{{gofilter $name}}(w *encodeWriter, v {{$name}}) (err error) {
   if err = encodeKind(w, {{gofilter $name}}Kind); err != nil {
 		return
@@ -165,13 +167,15 @@ func encodeinterface__(w *encodeWriter, i interface{}) (err error) {
 	switch v := i.(type) {
 
 // This does not include interface{} which is handled by this func.
-{{range $index, $name := $primitives}}
+{{range $index, $name := $encodeable}}
 	case {{$name}}:
 		return encode{{gofilter $name}}(w, v)
 {{end}}
-{{range $index, $name := $all}}
+{{range $index, $name := $pointerEncodeable}}
 	case *{{$name}}:
 		return encode{{gofilter $name}}(w, *v)
+{{end}}
+{{range $index, $name := $sliceEncodeable}}
 	case []{{$name}}:
 		return encodeSliceOf{{gofilter $name}}(w, v)
 	case *[]{{$name}}:
@@ -181,8 +185,8 @@ func encodeinterface__(w *encodeWriter, i interface{}) (err error) {
 	case *[]*{{$name}}:
 		return encodeSliceOf{{gofilter $name}}Ptr(w, *v)
 {{end}}
-{{range $index1, $name1 := $all}}
-{{range $index2, $name2 := $all}}
+{{range $index1, $name1 := $mapEncodeable}}
+{{range $index2, $name2 := $mapEncodeable}}
 	case map[{{$name1}}]{{$name2}}:
 		return encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w, v)
 	case *map[{{$name1}}]{{$name2}}:
@@ -203,7 +207,11 @@ func encodeinterface__(w *encodeWriter, i interface{}) (err error) {
 {{end}}
 // Finally, the default will use the magical mystery powers of reflect to encode whatever we encounter.
 	default:
-		//return w.encodeReflectValue(reflect.ValueOf(i))
+	  if bm, ok := i.(encoding.BinaryMarshaler); ok {
+		  return encodebinary_Marshaler(w, bm)
+		} else {
+			//return w.encodereflect_Value(reflect.ValueOf(i))
+		}
 	}
 
 	return

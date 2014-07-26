@@ -1,16 +1,18 @@
 package godec
 
-{{ $primitives := .Primitives }}
-{{ $all := .All }}
+{{ $decodeable := .Decodeable }}
+{{ $sliceDecodeable := .SliceDecodeable }}
+{{ $mapDecodeable := .MapDecodeable }}
 
 import (
 	"fmt"
 	"time"
+	"encoding"
 )
 
 // All slices are decoded by verifying that the encoded kind is sliceKind and that the element kind is the same, reading the length of the slice, and then the raw data.
 // But we skip []byte, because they are so darn simple to encode that we do it in another explicit function.
-{{range $index, $name := $all}}
+{{range $index, $name := $sliceDecodeable}}
 {{if ne $name "uint8"}}
 func decodeSliceOf{{gofilter $name}}(r *decodeReader, v *[]{{$name}}) (err error) {
 	kind, err := decodeKind(r)
@@ -77,7 +79,7 @@ func decodeSliceOf{{gofilter $name}}Ptr(r *decodeReader, v *[]*{{$name}}) (err e
 {{end}}
 
 // All maps are decoded by verifying that the encoded kind is mapKind, and that the key and value kinds are the same, then reading the raw data.
-{{range $index1, $name1 := $all}}{{range $index2, $name2 := $all}}
+{{range $index1, $name1 := $mapDecodeable}}{{range $index2, $name2 := $mapDecodeable}}
 func decodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(r *decodeReader, v *map[{{$name1}}]{{$name2}}) (err error) {
   kind, err := decodeKind(r)
 	if err != nil {
@@ -256,7 +258,8 @@ func decodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(r *decodeReader, 
 {{end}}{{end}}
 
 // All primitive types are parsed by verifying that the encoded kind makes sense, and then parsing their raw data
-{{range $index, $name := $primitives}}
+{{range $index, $name := $decodeable}}
+{{if ne $name "interface{}"}}
 func decode{{gofilter $name}}(r *decodeReader, v *{{$name}}) (err error) {
 	kind, err := decodeKind(r)
 	if err != nil {
@@ -269,24 +272,25 @@ func decode{{gofilter $name}}(r *decodeReader, v *{{$name}}) (err error) {
 	return rawdecode{{gofilter $name}}(r, v)
 }
 {{end}}
+{{end}}
 
 func decode(r *decodeReader, i interface{}) (err error) {
 	switch v := i.(type) {
 
 	case nil:
 		err = fmt.Errorf("Unable to decode to nil pointer")
-{{range $index, $name := $all}}
+{{range $index, $name := $decodeable}}
 	case *{{$name}}:
 		return decode{{gofilter $name}}(r, v)
 {{end}}
-{{range $index, $name := $all}}
+{{range $index, $name := $sliceDecodeable}}
 	case *[]{{$name}}:
 		return decodeSliceOf{{gofilter $name}}(r, v)
 	case *[]*{{$name}}:
 		return decodeSliceOf{{gofilter $name}}Ptr(r, v)
 {{end}}
-{{range $index1, $name1 := $all}}
-{{range $index2, $name2 := $all}}
+{{range $index1, $name1 := $mapDecodeable}}
+{{range $index2, $name2 := $mapDecodeable}}
 	case *map[{{$name1}}]{{$name2}}:
 		return decodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(r, v)
 	case *map[*{{$name1}}]{{$name2}}:
@@ -299,7 +303,11 @@ func decode(r *decodeReader, i interface{}) (err error) {
 {{end}}
 // Finally, the default will use the magical mystery powers of reflect to encode whatever we encounter.
 	default:
-		//return r.decodeReflectValue(reflect.ValueOf(i))
+	  if bu, ok := i.(encoding.BinaryUnmarshaler); ok {
+		  return decodebinary_Unmarshaler(r, bu)
+		} else {
+			//return r.decodereflect_Value(reflect.ValueOf(i))
+		}
   }
 	
 	return

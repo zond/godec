@@ -1,6 +1,7 @@
 package godec
 
 import (
+	"encoding"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -104,6 +105,26 @@ func decodeKind(r *decodeReader) (result Kind, err error) {
 	}
 	result = Kind(u)
 	return
+}
+
+func decodebinary_Unmarshaler(r *decodeReader, bu encoding.BinaryUnmarshaler) (err error) {
+	kind, err := decodeKind(r)
+	if err != nil {
+		return
+	}
+	if kind != binaryUnMarshalerKind {
+		err = fmt.Errorf("Unable to decode %v into %v", kind, bu)
+		return
+	}
+	var size uint
+	if err = rawdecodeuint(r, &size); err != nil {
+		return
+	}
+	b, err := r.readBytes(int(size))
+	if err != nil {
+		return
+	}
+	return bu.UnmarshalBinary(b)
 }
 
 func rawdecodestring(r *decodeReader, s *string) (err error) {

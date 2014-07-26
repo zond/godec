@@ -29,11 +29,26 @@ var primitives = []string{
 	"time.Time",
 }
 
-var all = append([]string{"interface{}"}, primitives...)
+var encodeable = primitives
+var pointerEncodeable = append([]string{"interface{}"}, primitives...)
+var sliceEncodeable = pointerEncodeable
+var mapEncodeable = pointerEncodeable
+
+var decodeable = append([]string{"interface{}"}, primitives...)
+var sliceDecodeable = decodeable
+var mapDecodeable = decodeable
+
+// Pointers are also encodeable as pointers to themselves.
+var pointers = append([]string{"interface{}"}, primitives...)
 
 var context = map[string]interface{}{
-	"Primitives": primitives,
-	"All":        all,
+	"Encodeable":        encodeable,
+	"PointerEncodeable": pointerEncodeable,
+	"SliceEncodeable":   sliceEncodeable,
+	"MapEncodeable":     mapEncodeable,
+	"Decodeable":        decodeable,
+	"SliceDecodeable":   sliceDecodeable,
+	"MapDecodeable":     mapDecodeable,
 }
 
 var goFileReg = regexp.MustCompile("(^[^.].*\\.go)\\.template$")

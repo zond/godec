@@ -24,6 +24,7 @@ const (
 	complex128Kind
 	sliceKind
 	mapKind
+	binaryUnMarshalerKind
 )
 
 type Kind int
@@ -66,6 +67,12 @@ func (self Kind) String() string {
 		return "complex128"
 	case time_TimeKind:
 		return "time.Time"
+	case sliceKind:
+		return "[]"
+	case mapKind:
+		return "map[]"
+	case binaryUnMarshalerKind:
+		return "encoding.BinaryUnMarshaler"
 	}
 	panic(fmt.Errorf("Unknown Kind %v", self))
 }
