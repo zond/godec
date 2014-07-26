@@ -26,6 +26,7 @@ var primitives = []string{
 	"float64",
 	"complex64",
 	"complex128",
+	"time.Time",
 }
 
 var all = append([]string{"interface{}"}, primitives...)

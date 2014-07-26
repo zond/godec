@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"io"
 	"math"
-	"reflect"
+	"time"
 )
 
 type encodeWriter struct {
@@ -86,8 +86,12 @@ func (self *Encoder) Encode(i interface{}) (err error) {
 	return
 }
 
-func encodeKind(w *encodeWriter, k reflect.Kind) (err error) {
+func encodeKind(w *encodeWriter, k Kind) (err error) {
 	return rawencodeuint64(w, uint64(k))
+}
+
+func rawencodetime_Time(w *encodeWriter, t time.Time) (err error) {
+	return rawencodeint64(w, t.UnixNano())
 }
 
 func rawencodeinterface__(w *encodeWriter, v interface{}) (err error) {

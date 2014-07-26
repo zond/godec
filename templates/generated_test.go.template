@@ -5,6 +5,7 @@ package godec
 
 import (
   "testing"
+	"time"
 )
 
 {{range $index, $name := $all}}
@@ -30,7 +31,7 @@ func randomSliceOf{{gofilter $name}}() []{{$name}} {
 
 {{range $index, $name := $primitives}}
 func TestEncodeDecode{{gofilter $name}}(t *testing.T) {
-  for i := 0; i < 128; i++ {
+  for i := 0; i < Runs * 128; i++ {
 		var dst {{$name}}
 		encodeDecode(t, random{{gofilter $name}}(), &dst)
   }
@@ -39,7 +40,7 @@ func TestEncodeDecode{{gofilter $name}}(t *testing.T) {
 
 {{range $index, $name := $all}}
 func TestEncodeDecode{{gofilter $name}}Ptr(t *testing.T) {
-  for i := 0; i < 128; i++ {
+  for i := 0; i < Runs * 128; i++ {
 	  var dst {{$name}}
 		src := random{{gofilter $name}}()
 		encodeDecode(t, &src, &dst)
@@ -47,14 +48,14 @@ func TestEncodeDecode{{gofilter $name}}Ptr(t *testing.T) {
 }
 
 func TestEncodeDecodeSliceOf{{gofilter $name}}(t *testing.T) {
-  for i := 0; i < 16; i++ {
+  for i := 0; i < Runs * 16; i++ {
 	  var dst []{{$name}}
 		encodeDecode(t, randomSliceOf{{gofilter $name}}(), &dst)
 	}
 }
 
 func TestEncodeDecodeSliceOf{{gofilter $name}}Ptr(t *testing.T) {
-  for i := 0; i < 16; i++ {
+  for i := 0; i < Runs * 16; i++ {
 	  var dst []*{{$name}}
 		encodeDecode(t, randomSliceOf{{gofilter $name}}Ptr(), &dst)
 	}

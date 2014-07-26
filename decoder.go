@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"reflect"
+	"time"
 )
 
 type decodeReader struct {
@@ -96,12 +97,12 @@ func (self *Decoder) Decode(i interface{}) (err error) {
 	return
 }
 
-func decodeKind(r *decodeReader) (result reflect.Kind, err error) {
+func decodeKind(r *decodeReader) (result Kind, err error) {
 	var u uint64
 	if err = rawdecodeuint64(r, &u); err != nil {
 		return
 	}
-	result = reflect.Kind(u)
+	result = Kind(u)
 	return
 }
 
@@ -115,6 +116,15 @@ func rawdecodestring(r *decodeReader, s *string) (err error) {
 		return
 	}
 	*s = string(b)
+	return
+}
+
+func rawdecodetime_Time(r *decodeReader, t *time.Time) (err error) {
+	var i int64
+	if err = rawdecodeint64(r, &i); err != nil {
+		return
+	}
+	*t = time.Unix(0, i)
 	return
 }
 
@@ -148,6 +158,17 @@ func rawdecodeinterface__(r *decodeReader, i *interface{}) (err error) {
 	switch kind {
 	case interface__Kind:
 		err = fmt.Errorf("Unable to decode raw interface to raw interface - and this should never become an issue anyway. This should never happen.")
+	case boolKind:
+		proxy := true
+		if err = rawdecodebool(r, &proxy); err != nil {
+			return
+		}
+	case time_TimeKind:
+		var proxy time.Time
+		if err = rawdecodetime_Time(r, &proxy); err != nil {
+			return
+		}
+		*i = proxy
 	case stringKind:
 		proxy := ""
 		if err = rawdecodestring(r, &proxy); err != nil {
@@ -155,20 +176,86 @@ func rawdecodeinterface__(r *decodeReader, i *interface{}) (err error) {
 		}
 		*i = proxy
 	case intKind:
+		var proxy int
+		if err = rawdecodeint(r, &proxy); err != nil {
+			return
+		}
+		*i = proxy
+	case int8Kind:
+		proxy := int8(0)
+		if err = rawdecodeint8(r, &proxy); err != nil {
+			return
+		}
+		*i = proxy
+	case int16Kind:
+		proxy := int16(0)
+		if err = rawdecodeint16(r, &proxy); err != nil {
+			return
+		}
+		*i = proxy
+	case int32Kind:
+		proxy := int32(0)
+		if err = rawdecodeint32(r, &proxy); err != nil {
+			return
+		}
+		*i = proxy
+	case int64Kind:
 		proxy := int64(0)
 		if err = rawdecodeint64(r, &proxy); err != nil {
 			return
 		}
 		*i = proxy
+	case uintptrKind:
+		proxy := uintptr(0)
+		if err = rawdecodeuintptr(r, &proxy); err != nil {
+			return
+		}
+		*i = proxy
 	case uintKind:
+		proxy := uint(0)
+		if err = rawdecodeuint(r, &proxy); err != nil {
+			return
+		}
+		*i = proxy
+	case uint8Kind:
+		proxy := uint8(0)
+		if err = rawdecodeuint8(r, &proxy); err != nil {
+			return
+		}
+		*i = proxy
+	case uint16Kind:
+		proxy := uint16(0)
+		if err = rawdecodeuint16(r, &proxy); err != nil {
+			return
+		}
+		*i = proxy
+	case uint32Kind:
+		proxy := uint32(0)
+		if err = rawdecodeuint32(r, &proxy); err != nil {
+			return
+		}
+		*i = proxy
+	case uint64Kind:
 		proxy := uint64(0)
 		if err = rawdecodeuint64(r, &proxy); err != nil {
+			return
+		}
+		*i = proxy
+	case float32Kind:
+		proxy := float32(0)
+		if err = rawdecodefloat32(r, &proxy); err != nil {
 			return
 		}
 		*i = proxy
 	case float64Kind:
 		proxy := float64(0)
 		if err = rawdecodefloat64(r, &proxy); err != nil {
+			return
+		}
+		*i = proxy
+	case complex64Kind:
+		proxy := complex(float32(0), float32(0))
+		if err = rawdecodecomplex64(r, &proxy); err != nil {
 			return
 		}
 		*i = proxy

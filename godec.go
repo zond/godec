@@ -1,24 +1,71 @@
 package godec
 
-import "reflect"
+import "fmt"
 
 const (
-	interface__Kind = reflect.Interface
-	stringKind      = reflect.String
-	boolKind        = reflect.Uint64
-	intKind         = reflect.Int64
-	int8Kind        = reflect.Int64
-	int16Kind       = reflect.Int64
-	int32Kind       = reflect.Int64
-	int64Kind       = reflect.Int64
-	uintKind        = reflect.Uint64
-	uint8Kind       = reflect.Uint64
-	uint16Kind      = reflect.Uint64
-	uint32Kind      = reflect.Uint64
-	uint64Kind      = reflect.Uint64
-	uintptrKind     = reflect.Uint64
-	float32Kind     = reflect.Float64
-	float64Kind     = reflect.Float64
-	complex64Kind   = reflect.Complex128
-	complex128Kind  = reflect.Complex128
+	stringKind Kind = iota
+	boolKind
+	intKind
+	uintKind
+	time_TimeKind
+	interface__Kind
+	int8Kind
+	int16Kind
+	int32Kind
+	int64Kind
+	uint8Kind
+	uint16Kind
+	uint32Kind
+	uint64Kind
+	uintptrKind
+	float32Kind
+	float64Kind
+	complex64Kind
+	complex128Kind
+	sliceKind
+	mapKind
 )
+
+type Kind int
+
+func (self Kind) String() string {
+	switch self {
+	case stringKind:
+		return "string"
+	case boolKind:
+		return "bool"
+	case intKind:
+		return "int"
+	case uintKind:
+		return "uint"
+	case int8Kind:
+		return "int8"
+	case int16Kind:
+		return "int16"
+	case int32Kind:
+		return "int32"
+	case int64Kind:
+		return "int64"
+	case uint8Kind:
+		return "uint8"
+	case uint16Kind:
+		return "uint16"
+	case uint32Kind:
+		return "uint32"
+	case uint64Kind:
+		return "uint64"
+	case uintptrKind:
+		return "uintptr"
+	case float32Kind:
+		return "float32"
+	case float64Kind:
+		return "float64"
+	case complex64Kind:
+		return "complex64"
+	case complex128Kind:
+		return "complex128"
+	case time_TimeKind:
+		return "time.Time"
+	}
+	panic(fmt.Errorf("Unknown Kind %v", self))
+}

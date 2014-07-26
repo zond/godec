@@ -5,10 +5,10 @@ package godec
 
 import (
 	"fmt"
-	"reflect"
+	"time"
 )
 
-// All slices are decoded by verifying that the encoded kind is reflect.Slice and that the element kind is the same, reading the length of the slice, and then the raw data.
+// All slices are decoded by verifying that the encoded kind is sliceKind and that the element kind is the same, reading the length of the slice, and then the raw data.
 // But we skip []byte, because they are so darn simple to encode that we do it in another explicit function.
 {{range $index, $name := $all}}
 {{if ne $name "uint8"}}
@@ -17,7 +17,7 @@ func decodeSliceOf{{gofilter $name}}(r *decodeReader, v *[]{{$name}}) (err error
 	if err != nil {
 		return
 	}
-	if kind != reflect.Slice {
+	if kind != sliceKind {
 		err = fmt.Errorf("Unable to decode %v into *{{$name}}", kind)
 		return
 	}
@@ -48,7 +48,7 @@ func decodeSliceOf{{gofilter $name}}Ptr(r *decodeReader, v *[]*{{$name}}) (err e
 	if err != nil {
 		return
 	}
-	if kind != reflect.Slice {
+	if kind != sliceKind {
 		err = fmt.Errorf("Unable to decode %v into *{{$name}}", kind)
 		return
 	}
@@ -76,14 +76,14 @@ func decodeSliceOf{{gofilter $name}}Ptr(r *decodeReader, v *[]*{{$name}}) (err e
 }
 {{end}}
 
-// All maps are decoded by verifying that the encoded kind is reflect.Map, and that the key and value kinds are the same, then reading the raw data.
+// All maps are decoded by verifying that the encoded kind is mapKind, and that the key and value kinds are the same, then reading the raw data.
 {{range $index1, $name1 := $all}}{{range $index2, $name2 := $all}}
 func decodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(r *decodeReader, v *map[{{$name1}}]{{$name2}}) (err error) {
   kind, err := decodeKind(r)
 	if err != nil {
 		return
 	}
-	if kind != reflect.Map {
+	if kind != mapKind {
 		err = fmt.Errorf("Unable to decode %v into *map[{{$name1}}][{{$name2}}", kind)
 		return
 	}
@@ -127,7 +127,7 @@ func decodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(r *decodeReader, v *
 	if err != nil {
 		return
 	}
-	if kind != reflect.Map {
+	if kind != mapKind {
 		err = fmt.Errorf("Unable to decode %v into *map[*{{$name1}}][{{$name2}}", kind)
 		return
 	}
@@ -171,7 +171,7 @@ func decodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(r *decodeReader, v *
 	if err != nil {
 		return
 	}
-	if kind != reflect.Map {
+	if kind != mapKind {
 		err = fmt.Errorf("Unable to decode %v into *map[*{{$name1}}][{{$name2}}", kind)
 		return
 	}
@@ -215,7 +215,7 @@ func decodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(r *decodeReader, 
 	if err != nil {
 		return
 	}
-	if kind != reflect.Map {
+	if kind != mapKind {
 		err = fmt.Errorf("Unable to decode %v into *map[*{{$name1}}][{{$name2}}", kind)
 		return
 	}

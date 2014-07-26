@@ -3,9 +3,21 @@ package godec
 import (
 	"bytes"
 	"math/rand"
+	"os"
 	"reflect"
+	"strconv"
 	"testing"
+	"time"
 )
+
+var Runs = 1
+
+func init() {
+	envRuns, err := strconv.Atoi(os.Getenv("RUNS"))
+	if err == nil {
+		Runs = envRuns
+	}
+}
 
 func randombool() bool {
 	if rand.Int31n(2) == 0 {
@@ -119,6 +131,10 @@ func randomuint32() uint32 {
 
 func randomuint64() uint64 {
 	return uint64(rand.Int63())
+}
+
+func randomtime_Time() time.Time {
+	return time.Unix(0, randomint64())
 }
 
 func encodeDecode(t *testing.T, src, dst interface{}) {
