@@ -2,6 +2,7 @@ package godec
 
 import (
 	"bytes"
+	"fmt"
 	"math/rand"
 	"os"
 	"reflect"
@@ -137,6 +138,55 @@ func randomtime_Time() time.Time {
 	return time.Unix(0, randomint64())
 }
 
+func convertPtrMap(v reflect.Value) (result reflect.Value) {
+	trueValue := reflect.ValueOf(true)
+	boolType := trueValue.Type()
+	valueType := v.Type().Elem()
+	for valueType.Kind() == reflect.Ptr {
+		valueType = valueType.Elem()
+	}
+	keyType := v.Type().Key()
+	for keyType.Kind() == reflect.Ptr {
+		keyType = keyType.Elem()
+	}
+	containerType := reflect.MapOf(valueType, boolType)
+	result = reflect.MakeMap(reflect.MapOf(keyType, containerType))
+	for _, key := range v.MapKeys() {
+		value := v.MapIndex(key)
+		for key.Kind() == reflect.Ptr {
+			key = key.Elem()
+		}
+		for value.Kind() == reflect.Ptr {
+			value = value.Elem()
+		}
+		valueContainer := result.MapIndex(key)
+		if !valueContainer.IsValid() {
+			valueContainer = reflect.MakeMap(containerType)
+			result.SetMapIndex(key, valueContainer)
+		}
+		valueContainer.SetMapIndex(value, trueValue)
+	}
+	return
+}
+
+func ptrMapDeepEqual(v1, v2 reflect.Value) bool {
+	regMap1 := convertPtrMap(v1)
+	regMap2 := convertPtrMap(v2)
+	if regMap1.Len() != regMap2.Len() {
+		fmt.Println("not same len")
+		return false
+	}
+	return reflect.DeepEqual(regMap1.Interface(), regMap2.Interface())
+}
+
+func DeepEqual(i1, i2 interface{}) bool {
+	v1 := reflect.ValueOf(i1)
+	if v1.Kind() == reflect.Map && (v1.Type().Key().Kind() == reflect.Ptr || v1.Type().Elem().Kind() == reflect.Ptr) {
+		return ptrMapDeepEqual(v1, reflect.ValueOf(i2))
+	}
+	return reflect.DeepEqual(i1, i2)
+}
+
 func encodeDecode(t *testing.T, src, dst interface{}) {
 	buf := &bytes.Buffer{}
 	err := NewEncoder(buf).Encode(src)
@@ -151,7 +201,7 @@ func encodeDecode(t *testing.T, src, dst interface{}) {
 	if srcVal := reflect.ValueOf(src); srcVal.Kind() == reflect.Ptr {
 		toCmp = srcVal.Elem().Interface()
 	}
-	if !reflect.DeepEqual(toCmp, dstElem) {
+	if !DeepEqual(toCmp, dstElem) {
 		t.Fatalf("Encoding/decoding %v produced %v", toCmp, dstElem)
 	}
 	b, err := Marshal(src)
@@ -162,7 +212,7 @@ func encodeDecode(t *testing.T, src, dst interface{}) {
 		t.Fatalf("Unable to unmarshal to %v: %v", dstElem, err)
 	}
 	dstElem = reflect.ValueOf(dst).Elem().Interface()
-	if !reflect.DeepEqual(toCmp, dstElem) {
+	if !DeepEqual(toCmp, dstElem) {
 		t.Fatalf("Marshalling/unmarshalling %v produced %v", toCmp, dstElem)
 	}
 }
