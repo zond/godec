@@ -202,7 +202,7 @@ func encodeDecode(t *testing.T, src, dst interface{}) {
 		toCmp = srcVal.Elem().Interface()
 	}
 	if !DeepEqual(toCmp, dstElem) {
-		t.Fatalf("Encoding/decoding %v produced %v", toCmp, dstElem)
+		t.Fatalf("Encoding/decoding %#v produced %#v", toCmp, dstElem)
 	}
 	b, err := Marshal(src)
 	if err != nil {
@@ -217,11 +217,13 @@ func encodeDecode(t *testing.T, src, dst interface{}) {
 	}
 }
 
-func TestEncodeDecodeMaps(t *testing.T) {
-	var mSI map[string]int
-	encodeDecode(t, map[string]int{"hej": 1, "haha": 2}, &mSI)
-	encodeDecode(t, map[string]int{"hejsan": 10, "hahaha": 20}, &mSI)
-	var mIB map[int]bool
-	encodeDecode(t, map[int]bool{44: true, 52: false}, &mIB)
-	encodeDecode(t, map[int]bool{442: true, 523: true}, &mIB)
+func TestEncodeDecodeNestedThingsToInterface(t *testing.T) {
+	var dst interface{}
+	encodeDecode(t, map[interface{}]interface{}{
+		"hej": 33,
+		41: []interface{}{
+			"apa",
+			"gnu",
+		},
+	}, &dst)
 }

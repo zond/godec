@@ -27,10 +27,29 @@ const (
 	binaryUnMarshalerKind
 )
 
-type Kind int
+type Type struct {
+	Base  Kind
+	Key   *Type
+	Value *Type
+}
+
+func (self Type) String() string {
+	switch self.Base {
+	case sliceKind:
+		return "[]" + self.Value.String()
+	case mapKind:
+		return "map[" + self.Key.String() + "]" + self.Value.String()
+	default:
+		return self.Base.String()
+	}
+}
+
+type Kind uint64
 
 func (self Kind) String() string {
 	switch self {
+	case interface__Kind:
+		return "interface{}"
 	case stringKind:
 		return "string"
 	case boolKind:
@@ -74,5 +93,5 @@ func (self Kind) String() string {
 	case binaryUnMarshalerKind:
 		return "encoding.BinaryUnMarshaler"
 	}
-	panic(fmt.Errorf("Unknown Kind %v", self))
+	return fmt.Sprintf("Unrecognized Kind %#v", self)
 }

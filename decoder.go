@@ -98,22 +98,37 @@ func (self *Decoder) Decode(i interface{}) (err error) {
 	return
 }
 
-func decodeKind(r *decodeReader) (result Kind, err error) {
+func decodeType(r *decodeReader) (result *Type, err error) {
 	var u uint64
 	if err = rawdecodeuint64(r, &u); err != nil {
 		return
 	}
-	result = Kind(u)
+	result = &Type{
+		Base: Kind(u),
+	}
+	switch result.Base {
+	case sliceKind:
+		if result.Value, err = decodeType(r); err != nil {
+			return
+		}
+	case mapKind:
+		if result.Key, err = decodeType(r); err != nil {
+			return
+		}
+		if result.Value, err = decodeType(r); err != nil {
+			return
+		}
+	}
 	return
 }
 
 func decodebinary_Unmarshaler(r *decodeReader, bu encoding.BinaryUnmarshaler) (err error) {
-	kind, err := decodeKind(r)
+	t, err := decodeType(r)
 	if err != nil {
 		return
 	}
-	if kind != binaryUnMarshalerKind {
-		err = fmt.Errorf("Unable to decode %v into %v", kind, bu)
+	if t.Base != binaryUnMarshalerKind {
+		err = fmt.Errorf("Unable to decode %v into %v", t, bu)
 		return
 	}
 	var size uint
@@ -151,12 +166,12 @@ func rawdecodetime_Time(r *decodeReader, t *time.Time) (err error) {
 
 // The special case for byte slices is here, and we treat byte slices exactly like strings.
 func decodeSliceOfuint8(r *decodeReader, v *[]uint8) (err error) {
-	kind, err := decodeKind(r)
+	t, err := decodeType(r)
 	if err != nil {
 		return
 	}
-	if kind != stringKind {
-		err = fmt.Errorf("Unable to decode %v into *[]uint8", kind)
+	if t.Base != stringKind {
+		err = fmt.Errorf("Unable to decode %v into *[]uint8", t)
 		return
 	}
 	var l uint
@@ -171,14 +186,12 @@ func decodeinterface__(r *decodeReader, i *interface{}) (err error) {
 	return rawdecodeinterface__(r, i)
 }
 
-func rawdecodeinterface__(r *decodeReader, i *interface{}) (err error) {
-	kind, err := decodeKind(r)
-	if err != nil {
-		return
-	}
-	switch kind {
+func decodeInterfaceWithKind(r *decodeReader, t *Type, i *interface{}) (err error) {
+	switch t.Base {
 	case interface__Kind:
-		err = fmt.Errorf("Unable to decode raw interface to raw interface - and this should never become an issue anyway. This should never happen.")
+		if err = rawdecodeinterface__(r, i); err != nil {
+			return
+		}
 	case boolKind:
 		proxy := true
 		if err = rawdecodebool(r, &proxy); err != nil {
@@ -286,10 +299,50 @@ func rawdecodeinterface__(r *decodeReader, i *interface{}) (err error) {
 			return
 		}
 		*i = proxy
+	case sliceKind:
+		var l uint
+		if err = rawdecodeuint(r, &l); err != nil {
+			return
+		}
+		sl := make([]interface{}, int(l))
+		for i := 0; i < int(l); i++ {
+			var el interface{}
+			if err = decodeInterfaceWithKind(r, t.Value, &el); err != nil {
+				return
+			}
+			sl[i] = el
+		}
+		*i = sl
+	case mapKind:
+		var l uint
+		if err = rawdecodeuint(r, &l); err != nil {
+			return
+		}
+		m := make(map[interface{}]interface{}, int(l))
+		for i := 0; i < int(l); i++ {
+			var k interface{}
+			if err = decodeInterfaceWithKind(r, t.Key, &k); err != nil {
+				return
+			}
+			var v interface{}
+			if err = decodeInterfaceWithKind(r, t.Value, &v); err != nil {
+				return
+			}
+			m[k] = v
+		}
+		*i = m
 	default:
-		err = fmt.Errorf("Unknown kind to decode to interface: %v", kind)
+		err = fmt.Errorf("Unknown kind to decode to interface: %v", t)
 	}
 	return
+}
+
+func rawdecodeinterface__(r *decodeReader, i *interface{}) (err error) {
+	t, err := decodeType(r)
+	if err != nil {
+		return
+	}
+	return decodeInterfaceWithKind(r, t, i)
 }
 
 func rawdecodereflect_Value(r *decodeReader, v *reflect.Value) (err error) {

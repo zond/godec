@@ -87,8 +87,21 @@ func (self *Encoder) Encode(i interface{}) (err error) {
 	return
 }
 
-func encodeKind(w *encodeWriter, k Kind) (err error) {
-	return rawencodeuint64(w, uint64(k))
+func encodeType(w *encodeWriter, t *Type) (err error) {
+	if err = rawencodeuint64(w, uint64(t.Base)); err != nil {
+		return
+	}
+	if t.Key != nil {
+		if err = encodeType(w, t.Key); err != nil {
+			return
+		}
+	}
+	if t.Value != nil {
+		if err = encodeType(w, t.Value); err != nil {
+			return
+		}
+	}
+	return
 }
 
 func rawencodetime_Time(w *encodeWriter, t time.Time) (err error) {
@@ -96,7 +109,7 @@ func rawencodetime_Time(w *encodeWriter, t time.Time) (err error) {
 }
 
 func encodebinary_Marshaler(w *encodeWriter, bm encoding.BinaryMarshaler) (err error) {
-	if err = encodeKind(w, binaryUnMarshalerKind); err != nil {
+	if err = encodeType(w, &Type{Base: binaryUnMarshalerKind}); err != nil {
 		return
 	}
 	b, err := bm.MarshalBinary()
@@ -126,7 +139,7 @@ func rawencodestring(w *encodeWriter, s string) (err error) {
 
 // The special case for byte slices is here, and we treat byte slices exactly like strings.
 func encodeSliceOfuint8(w *encodeWriter, v []uint8) (err error) {
-	if err = encodeKind(w, stringKind); err != nil {
+	if err = encodeType(w, &Type{Base: stringKind}); err != nil {
 		return
 	}
 	if err = rawencodeuint(w, uint(len(v))); err != nil {
