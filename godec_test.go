@@ -226,4 +226,32 @@ func TestEncodeDecodeNestedThingsToInterface(t *testing.T) {
 			"gnu",
 		},
 	}, &dst)
+	encodeDecode(t, map[interface{}]interface{}{
+		"hehu": map[interface{}]interface{}{
+			33: []interface{}{
+				31,
+				"hehu",
+				map[interface{}]interface{}{
+					11: map[interface{}]interface{}{
+						"gngn": "hepp",
+					},
+				},
+			},
+		},
+	}, &dst)
+	encodeDecode(t, []interface{}{
+		"333",
+		333,
+		map[interface{}]interface{}{
+			"apa": 11,
+		},
+		[]interface{}{
+			[]interface{}{
+				22,
+				44,
+				"hepp",
+			},
+			"hepp2",
+		},
+	}, &dst)
 }
