@@ -1,6 +1,9 @@
 package godec
 
-import "fmt"
+import (
+	"fmt"
+	"runtime"
+)
 
 const (
 	stringKind Kind = iota
@@ -24,8 +27,34 @@ const (
 	complex128Kind
 	sliceKind
 	mapKind
+	structKind
 	binaryUnMarshalerKind
 )
+
+type stackErr struct {
+	Err   error
+	Stack string
+}
+
+func (self stackErr) String() string {
+	return self.Err.Error() + "\n" + self.Stack
+}
+
+func (self stackErr) Error() string {
+	return self.String()
+}
+
+func errorf(f string, args ...interface{}) error {
+	stack := make([]byte, 4096)
+	s := runtime.Stack(stack, false)
+	if s < len(stack) {
+		stack = stack[:s]
+	}
+	return stackErr{
+		Err:   fmt.Errorf(f, args...),
+		Stack: string(stack),
+	}
+}
 
 type Type struct {
 	Base  Kind

@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"io"
 	"math"
+	"reflect"
 	"time"
 )
 
@@ -100,6 +101,151 @@ func encodeType(w *encodeWriter, t *Type) (err error) {
 		if err = encodeType(w, t.Value); err != nil {
 			return
 		}
+	}
+	return
+}
+
+func getTypeOf(t reflect.Type) (result *Type, err error) {
+	switch t.Kind() {
+	case reflect.Bool:
+		result = &Type{Base: boolKind}
+	case reflect.Int:
+		result = &Type{Base: int64Kind}
+	case reflect.Int8:
+		result = &Type{Base: int8Kind}
+	case reflect.Int16:
+		result = &Type{Base: int16Kind}
+	case reflect.Int32:
+		result = &Type{Base: int64Kind}
+	case reflect.Int64:
+		result = &Type{Base: int64Kind}
+	case reflect.Uint:
+		result = &Type{Base: uintKind}
+	case reflect.Uint8:
+		result = &Type{Base: uint8Kind}
+	case reflect.Uint16:
+		result = &Type{Base: uint16Kind}
+	case reflect.Uint32:
+		result = &Type{Base: uint32Kind}
+	case reflect.Uint64:
+		result = &Type{Base: uint64Kind}
+	case reflect.Uintptr:
+		result = &Type{Base: uintptrKind}
+	case reflect.Float32:
+		result = &Type{Base: float32Kind}
+	case reflect.Float64:
+		result = &Type{Base: float64Kind}
+	case reflect.Complex64:
+		result = &Type{Base: complex64Kind}
+	case reflect.Complex128:
+		result = &Type{Base: complex128Kind}
+	case reflect.Slice:
+		fallthrough
+	case reflect.Array:
+		var valueType *Type
+		if valueType, err = getTypeOf(t.Elem()); err != nil {
+			return
+		}
+		result = &Type{Base: sliceKind, Value: valueType}
+	case reflect.Map:
+		var keyType *Type
+		if keyType, err = getTypeOf(t.Key()); err != nil {
+			return
+		}
+		var valueType *Type
+		if valueType, err = getTypeOf(t.Elem()); err != nil {
+			return
+		}
+		result = &Type{Base: mapKind, Key: keyType, Value: valueType}
+	case reflect.String:
+		result = &Type{Base: stringKind}
+	case reflect.Struct:
+		result = &Type{Base: structKind}
+	default:
+		err = errorf("Unable to encode %v", t)
+	}
+	return
+}
+
+func encodereflect_Value(w *encodeWriter, v reflect.Value) (err error) {
+	var typ *Type
+	if typ, err = getTypeOf(v.Type()); err != nil {
+		return
+	}
+	if err = encodeType(w, typ); err != nil {
+		return
+	}
+	return encodeReflectValueWithoutType(w, v)
+}
+
+func encodeReflectValueWithoutType(w *encodeWriter, v reflect.Value) (err error) {
+	for v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	switch v.Kind() {
+	case reflect.Bool:
+		err = rawencodebool(w, v.Bool())
+	case reflect.Int:
+		fallthrough
+	case reflect.Int8:
+		fallthrough
+	case reflect.Int16:
+		fallthrough
+	case reflect.Int32:
+		fallthrough
+	case reflect.Int64:
+		err = rawencodeint64(w, v.Int())
+	case reflect.Uint:
+		fallthrough
+	case reflect.Uint8:
+		fallthrough
+	case reflect.Uint16:
+		fallthrough
+	case reflect.Uint32:
+		fallthrough
+	case reflect.Uint64:
+		fallthrough
+	case reflect.Uintptr:
+		err = rawencodeuint64(w, v.Uint())
+	case reflect.Float32:
+		fallthrough
+	case reflect.Float64:
+		err = rawencodefloat64(w, v.Float())
+	case reflect.Complex64:
+		fallthrough
+	case reflect.Complex128:
+		err = rawencodecomplex128(w, v.Complex())
+	case reflect.Slice:
+		fallthrough
+	case reflect.Array:
+		if err = rawencodeuint(w, uint(v.Len())); err != nil {
+			return
+		}
+		for i := 0; i < v.Len(); i++ {
+			if err = encodeReflectValueWithoutType(w, v.Index(i)); err != nil {
+				return
+			}
+		}
+	case reflect.Map:
+		if err = rawencodeuint(w, uint(v.Len())); err != nil {
+			return
+		}
+		for _, key := range v.MapKeys() {
+			if err = encodeReflectValueWithoutType(w, key); err != nil {
+				return
+			}
+			if err = encodeReflectValueWithoutType(w, v.MapIndex(key)); err != nil {
+				return
+			}
+		}
+	case reflect.String:
+		err = rawencodestring(w, v.String())
+	case reflect.Struct:
+		panic("no support for struct encoding yet")
+	case reflect.Interface:
+		err = rawencodeinterface__(w, v.Interface())
+	default:
+		err = errorf("Unable to encode %v", v.Interface())
 	}
 	return
 }

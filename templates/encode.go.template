@@ -8,6 +8,7 @@ package godec
 import (
 	"time"
 	"encoding"
+	"reflect"
 )
 
 // All slices are encoded by encoding sliceKind, the element kind, the length, and then all elements.
@@ -180,7 +181,7 @@ func encodeinterface__(w *encodeWriter, i interface{}) (err error) {
 	  if bm, ok := i.(encoding.BinaryMarshaler); ok {
 		  return encodebinary_Marshaler(w, bm)
 		} else {
-			//return w.encodereflect_Value(reflect.ValueOf(i))
+			return encodereflect_Value(w, reflect.ValueOf(i))
 		}
 	}
 

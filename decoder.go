@@ -3,7 +3,6 @@ package godec
 import (
 	"encoding"
 	"encoding/binary"
-	"fmt"
 	"io"
 	"math"
 	"reflect"
@@ -17,7 +16,7 @@ type decodeReader struct {
 
 func (self *decodeReader) readByte() (result byte, err error) {
 	if self.pos >= len(self.buf) {
-		err = io.EOF
+		err = errorf("EOF")
 		return
 	}
 	result = self.buf[self.pos]
@@ -27,7 +26,7 @@ func (self *decodeReader) readByte() (result byte, err error) {
 
 func (self *decodeReader) readBytes(n int) (result []byte, err error) {
 	if self.pos+n > len(self.buf) {
-		err = io.EOF
+		err = errorf("EOF")
 		return
 	}
 	result = self.buf[self.pos : self.pos+n]
@@ -38,7 +37,7 @@ func (self *decodeReader) readBytes(n int) (result []byte, err error) {
 func (self *decodeReader) readUint64() (result uint64, err error) {
 	result, read := binary.Uvarint(self.buf[self.pos:])
 	if read <= 0 {
-		err = fmt.Errorf("Unable to read uint: %v")
+		err = errorf("Unable to read uint: %v", read)
 		return
 	}
 	self.pos += read
@@ -76,7 +75,7 @@ func (self readerByteReader) ReadByte() (result byte, err error) {
 		return
 	}
 	if read != 1 {
-		err = fmt.Errorf("Tried to read from %v, got nothing", self.Reader)
+		err = errorf("Tried to read from %v, got nothing", self.Reader)
 		return
 	}
 	result = b[0]
@@ -128,7 +127,7 @@ func decodebinary_Unmarshaler(r *decodeReader, bu encoding.BinaryUnmarshaler) (e
 		return
 	}
 	if t.Base != binaryUnMarshalerKind {
-		err = fmt.Errorf("Unable to decode %v into %v", t, bu)
+		err = errorf("Unable to decode %v into %v", t, bu)
 		return
 	}
 	var size uint
@@ -171,7 +170,7 @@ func decodeSliceOfuint8(r *decodeReader, v *[]uint8) (err error) {
 		return
 	}
 	if t.Base != stringKind {
-		err = fmt.Errorf("Unable to decode %v into *[]uint8", t)
+		err = errorf("Unable to decode %v into *[]uint8", t)
 		return
 	}
 	var l uint
@@ -332,7 +331,7 @@ func decodeInterfaceWithKind(r *decodeReader, t *Type, i *interface{}) (err erro
 		}
 		*i = m
 	default:
-		err = fmt.Errorf("Unknown kind to decode to interface: %v", t)
+		err = errorf("Unknown kind to decode to interface: %v", t)
 	}
 	return
 }

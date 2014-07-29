@@ -217,7 +217,17 @@ func encodeDecode(t *testing.T, src, dst interface{}) {
 	}
 }
 
-func TestEncodeDecodeNestedThingsToInterface(t *testing.T) {
+type nestedThing1 map[string][]int
+
+func TestEncodeDecodeNestedTypedThingsToInterfaces(t *testing.T) {
+	var dst interface{}
+	encodeDecode(t, nestedThing1{
+		"a": []int{1, 2, 3},
+		"b": []int{4, 5, 6},
+	}, &dst)
+}
+
+func TestEncodeDecodeNestedInterfaces(t *testing.T) {
 	var dst interface{}
 	encodeDecode(t, map[interface{}]interface{}{
 		"hej": 33,
