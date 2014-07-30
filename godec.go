@@ -2,6 +2,7 @@ package godec
 
 import (
 	"fmt"
+	"reflect"
 	"runtime"
 )
 
@@ -73,6 +74,13 @@ func (self Type) String() string {
 	}
 }
 
+func (self *Type) Equal(o *Type) bool {
+	if self == nil && o == nil {
+		return true
+	}
+	return self.Base == o.Base && self.Key.Equal(o.Key) && self.Value.Equal(o.Value)
+}
+
 type Kind uint64
 
 func (self Kind) String() string {
@@ -123,4 +131,71 @@ func (self Kind) String() string {
 		return "encoding.BinaryUnMarshaler"
 	}
 	return fmt.Sprintf("Unrecognized Kind %#v", self)
+}
+
+func getTypeOf(t reflect.Type) (result *Type, err error) {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	switch t.Kind() {
+	case reflect.Bool:
+		result = &Type{Base: boolKind}
+	case reflect.Int:
+		result = &Type{Base: int64Kind}
+	case reflect.Int8:
+		result = &Type{Base: int8Kind}
+	case reflect.Int16:
+		result = &Type{Base: int16Kind}
+	case reflect.Int32:
+		result = &Type{Base: int64Kind}
+	case reflect.Int64:
+		result = &Type{Base: int64Kind}
+	case reflect.Uint:
+		result = &Type{Base: uintKind}
+	case reflect.Uint8:
+		result = &Type{Base: uint8Kind}
+	case reflect.Uint16:
+		result = &Type{Base: uint16Kind}
+	case reflect.Uint32:
+		result = &Type{Base: uint32Kind}
+	case reflect.Uint64:
+		result = &Type{Base: uint64Kind}
+	case reflect.Uintptr:
+		result = &Type{Base: uintptrKind}
+	case reflect.Float32:
+		result = &Type{Base: float32Kind}
+	case reflect.Float64:
+		result = &Type{Base: float64Kind}
+	case reflect.Complex64:
+		result = &Type{Base: complex64Kind}
+	case reflect.Complex128:
+		result = &Type{Base: complex128Kind}
+	case reflect.Slice:
+		fallthrough
+	case reflect.Array:
+		var valueType *Type
+		if valueType, err = getTypeOf(t.Elem()); err != nil {
+			return
+		}
+		result = &Type{Base: sliceKind, Value: valueType}
+	case reflect.Map:
+		var keyType *Type
+		if keyType, err = getTypeOf(t.Key()); err != nil {
+			return
+		}
+		var valueType *Type
+		if valueType, err = getTypeOf(t.Elem()); err != nil {
+			return
+		}
+		result = &Type{Base: mapKind, Key: keyType, Value: valueType}
+	case reflect.String:
+		result = &Type{Base: stringKind}
+	case reflect.Struct:
+		result = &Type{Base: mapKind, Key: &Type{Base: stringKind}, Value: &Type{Base: interface__Kind}}
+	case reflect.Interface:
+		result = &Type{Base: interface__Kind}
+	default:
+		err = errorf("Unable to encode %v", t)
+	}
+	return
 }

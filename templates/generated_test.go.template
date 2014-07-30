@@ -77,14 +77,14 @@ func randomMapOf{{gofilter $name}}To{{gofilter $name2}}Ptr() map[{{$name}}]*{{$n
 {{end}}
 
 {{range $index, $name := $decodeable}}
-func TestEncodeDecode{{gofilter $name}}(t *testing.T) {
+func TestGeneratedEncodeDecode{{gofilter $name}}(t *testing.T) {
   for i := 0; i < Runs * 128; i++ {
 		var dst {{$name}}
 		encodeDecode(t, random{{gofilter $name}}(), &dst)
   }
 }
 
-func TestEncodeDecode{{gofilter $name}}Ptr(t *testing.T) {
+func TestGeneratedEncodeDecode{{gofilter $name}}Ptr(t *testing.T) {
   for i := 0; i < Runs * 128; i++ {
 	  var dst {{$name}}
 		src := random{{gofilter $name}}()
@@ -92,21 +92,21 @@ func TestEncodeDecode{{gofilter $name}}Ptr(t *testing.T) {
   }
 }
 
-func TestEncodeDecodeSliceOf{{gofilter $name}}(t *testing.T) {
+func TestGeneratedEncodeDecodeSliceOf{{gofilter $name}}(t *testing.T) {
   for i := 0; i < Runs * 16; i++ {
 	  var dst []{{$name}}
 		encodeDecode(t, randomSliceOf{{gofilter $name}}(), &dst)
 	}
 }
 
-func TestEncodeDecodeSliceOf{{gofilter $name}}Ptr(t *testing.T) {
+func TestGeneratedEncodeDecodeSliceOf{{gofilter $name}}Ptr(t *testing.T) {
   for i := 0; i < Runs * 16; i++ {
 	  var dst []*{{$name}}
 		encodeDecode(t, randomSliceOf{{gofilter $name}}Ptr(), &dst)
 	}
 }
 
-func TestEncodeDecodePtrToSliceOf{{gofilter $name}}(t *testing.T) {
+func TestGeneratedEncodeDecodePtrToSliceOf{{gofilter $name}}(t *testing.T) {
   for i := 0; i < Runs * 16; i++ {
 	  var dst []{{$name}}
 		src := randomSliceOf{{gofilter $name}}()
@@ -114,7 +114,7 @@ func TestEncodeDecodePtrToSliceOf{{gofilter $name}}(t *testing.T) {
 	}
 }
 
-func TestEncodeDecodePtrToSliceOf{{gofilter $name}}Ptr(t *testing.T) {
+func TestGeneratedEncodeDecodePtrToSliceOf{{gofilter $name}}Ptr(t *testing.T) {
   for i := 0; i < Runs * 16; i++ {
 	  var dst []*{{$name}}
 		src := randomSliceOf{{gofilter $name}}Ptr()
@@ -123,35 +123,35 @@ func TestEncodeDecodePtrToSliceOf{{gofilter $name}}Ptr(t *testing.T) {
 }
 
 {{range $index2, $name2 := $decodeable}}
-func TestEncodeDecodeMapOf{{gofilter $name}}To{{gofilter $name2}}(t *testing.T) {
+func TestGeneratedEncodeDecodeMapOf{{gofilter $name}}To{{gofilter $name2}}(t *testing.T) {
   for i := 0; i < Runs * 16; i++ {
 	  var dst map[{{$name}}]{{$name2}}
 		encodeDecode(t, randomMapOf{{gofilter $name}}To{{gofilter $name2}}(), &dst)
 	}
 }
 
-func TestEncodeDecodeMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}(t *testing.T) {
+func TestGeneratedEncodeDecodeMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}(t *testing.T) {
   for i := 0; i < Runs * 16; i++ {
 	  var dst map[*{{$name}}]{{$name2}}
 		encodeDecode(t, randomMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}(), &dst)
 	}
 }
 
-func TestEncodeDecodeMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}Ptr(t *testing.T) {
+func TestGeneratedEncodeDecodeMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}Ptr(t *testing.T) {
   for i := 0; i < Runs * 16; i++ {
 	  var dst map[*{{$name}}]*{{$name2}}
 		encodeDecode(t, randomMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}Ptr(), &dst)
 	}
 }
 
-func TestEncodeDecodeMapOf{{gofilter $name}}To{{gofilter $name2}}Ptr(t *testing.T) {
+func TestGeneratedEncodeDecodeMapOf{{gofilter $name}}To{{gofilter $name2}}Ptr(t *testing.T) {
   for i := 0; i < Runs * 16; i++ {
 	  var dst map[{{$name}}]*{{$name2}}
 		encodeDecode(t, randomMapOf{{gofilter $name}}To{{gofilter $name2}}Ptr(), &dst)
 	}
 }
 
-func TestEncodeDecodePtrToMapOf{{gofilter $name}}To{{gofilter $name2}}(t *testing.T) {
+func TestGeneratedEncodeDecodePtrToMapOf{{gofilter $name}}To{{gofilter $name2}}(t *testing.T) {
   for i := 0; i < Runs * 16; i++ {
 	  var dst map[{{$name}}]{{$name2}}
 		src := randomMapOf{{gofilter $name}}To{{gofilter $name2}}()
@@ -159,7 +159,7 @@ func TestEncodeDecodePtrToMapOf{{gofilter $name}}To{{gofilter $name2}}(t *testin
 	}
 }
 
-func TestEncodeDecodePtrToMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}(t *testing.T) {
+func TestGeneratedEncodeDecodePtrToMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}(t *testing.T) {
   for i := 0; i < Runs * 16; i++ {
 	  var dst map[*{{$name}}]{{$name2}}
 		src := randomMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}()
@@ -167,7 +167,7 @@ func TestEncodeDecodePtrToMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}(t *tes
 	}
 }
 
-func TestEncodeDecodePtrToMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}Ptr(t *testing.T) {
+func TestGeneratedEncodeDecodePtrToMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}Ptr(t *testing.T) {
   for i := 0; i < Runs * 16; i++ {
 	  var dst map[*{{$name}}]*{{$name2}}
 		src := randomMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}Ptr()
@@ -175,7 +175,7 @@ func TestEncodeDecodePtrToMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}Ptr(t *
 	}
 }
 
-func TestEncodeDecodePtrToMapOf{{gofilter $name}}To{{gofilter $name2}}Ptr(t *testing.T) {
+func TestGeneratedEncodeDecodePtrToMapOf{{gofilter $name}}To{{gofilter $name2}}Ptr(t *testing.T) {
   for i := 0; i < Runs * 16; i++ {
 	  var dst map[{{$name}}]*{{$name2}}
 		src := randomMapOf{{gofilter $name}}To{{gofilter $name2}}Ptr()

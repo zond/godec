@@ -52,7 +52,7 @@ func Unmarshal(b []byte, i interface{}) (err error) {
 	r := &decodeReader{
 		buf: b,
 	}
-	if err = decode(r, i); err != nil {
+	if err = decode(r, true, i); err != nil {
 		return
 	}
 	return
@@ -121,14 +121,166 @@ func decodeType(r *decodeReader) (result *Type, err error) {
 	return
 }
 
-func decodebinary_Unmarshaler(r *decodeReader, bu encoding.BinaryUnmarshaler) (err error) {
-	t, err := decodeType(r)
-	if err != nil {
-		return
+func decodereflect_Value(r *decodeReader, decType bool, v reflect.Value) (err error) {
+	for v.Kind() == reflect.Ptr {
+		v = v.Elem()
 	}
-	if t.Base != binaryUnMarshalerKind {
-		err = errorf("Unable to decode %v into %v", t, bu)
-		return
+	switch v.Kind() {
+	case reflect.Bool:
+		var b bool
+		if err = decodebool(r, decType, &b); err != nil {
+			return
+		}
+		v.SetBool(b)
+	case reflect.Int:
+		var i int
+		if err = decodeint(r, decType, &i); err != nil {
+			return
+		}
+		v.SetInt(int64(i))
+	case reflect.Int8:
+		var i int8
+		if err = decodeint8(r, decType, &i); err != nil {
+			return
+		}
+		v.SetInt(int64(i))
+	case reflect.Int16:
+		var i int16
+		if err = decodeint16(r, decType, &i); err != nil {
+			return
+		}
+		v.SetInt(int64(i))
+	case reflect.Int32:
+		var i int32
+		if err = decodeint32(r, decType, &i); err != nil {
+			return
+		}
+		v.SetInt(int64(i))
+	case reflect.Int64:
+		var i int64
+		if err = decodeint64(r, decType, &i); err != nil {
+			return
+		}
+		v.SetInt(i)
+	case reflect.Uint:
+		var i uint
+		if err = decodeuint(r, decType, &i); err != nil {
+			return
+		}
+		v.SetUint(uint64(i))
+	case reflect.Uint8:
+		var i uint8
+		if err = decodeuint8(r, decType, &i); err != nil {
+			return
+		}
+		v.SetUint(uint64(i))
+	case reflect.Uint16:
+		var i uint16
+		if err = decodeuint16(r, decType, &i); err != nil {
+			return
+		}
+		v.SetUint(uint64(i))
+	case reflect.Uint32:
+		var i uint32
+		if err = decodeuint32(r, decType, &i); err != nil {
+			return
+		}
+		v.SetUint(uint64(i))
+	case reflect.Uint64:
+		var i uint64
+		if err = decodeuint64(r, decType, &i); err != nil {
+			return
+		}
+		v.SetUint(i)
+	case reflect.Uintptr:
+		var i uintptr
+		if err = decodeuintptr(r, decType, &i); err != nil {
+			return
+		}
+		v.SetUint(uint64(i))
+	case reflect.Float32:
+		var i float32
+		if err = decodefloat32(r, decType, &i); err != nil {
+			return
+		}
+		v.SetFloat(float64(i))
+	case reflect.Float64:
+		var i float64
+		if err = decodefloat64(r, decType, &i); err != nil {
+			return
+		}
+		v.SetFloat(i)
+	case reflect.Complex64:
+		var i complex64
+		if err = decodecomplex64(r, decType, &i); err != nil {
+			return
+		}
+		v.SetComplex(complex128(i))
+	case reflect.Complex128:
+		var i complex128
+		if err = decodecomplex128(r, decType, &i); err != nil {
+			return
+		}
+		v.SetComplex(i)
+	case reflect.String:
+		var i string
+		if err = decodestring(r, decType, &i); err != nil {
+			return
+		}
+		v.SetString(i)
+	case reflect.Array:
+		fallthrough
+	case reflect.Slice:
+		var encodedType *Type
+		if encodedType, err = decodeType(r); err != nil {
+			return
+		}
+		var valType *Type
+		refType := v.Type()
+		if valType, err = getTypeOf(refType); err != nil {
+			return
+		}
+		if !encodedType.Equal(valType) {
+			err = errorf("Can't decode %v into %v", encodedType, valType)
+			return
+		}
+		var l uint
+		if err = rawdecodeuint(r, &l); err != nil {
+			return
+		}
+		v.Set(reflect.MakeSlice(refType, int(l), int(l)))
+		for i := 0; i < int(l); i++ {
+			elType := refType.Elem()
+			origEl := reflect.New(elType)
+			el := origEl
+			for elType.Kind() == reflect.Ptr {
+				nextEl := reflect.New(elType.Elem())
+				el.Elem().Set(nextEl)
+				el = el.Elem()
+				elType = elType.Elem()
+			}
+			if err = decode(r, false, el.Interface()); err != nil {
+				return
+			}
+			v.Index(i).Set(origEl.Elem())
+		}
+	case reflect.Map:
+	case reflect.Struct:
+	}
+	return
+}
+
+func decodebinary_Unmarshaler(r *decodeReader, decType bool, bu encoding.BinaryUnmarshaler) (err error) {
+	if decType {
+		var t *Type
+		t, err = decodeType(r)
+		if err != nil {
+			return
+		}
+		if t.Base != binaryUnMarshalerKind {
+			err = errorf("Unable to decode %v into %v", t, bu)
+			return
+		}
 	}
 	var size uint
 	if err = rawdecodeuint(r, &size); err != nil {
@@ -164,14 +316,17 @@ func rawdecodetime_Time(r *decodeReader, t *time.Time) (err error) {
 }
 
 // The special case for byte slices is here, and we treat byte slices exactly like strings.
-func decodeSliceOfuint8(r *decodeReader, v *[]uint8) (err error) {
-	t, err := decodeType(r)
-	if err != nil {
-		return
-	}
-	if t.Base != stringKind {
-		err = errorf("Unable to decode %v into *[]uint8", t)
-		return
+func decodeSliceOfuint8(r *decodeReader, decType bool, v *[]uint8) (err error) {
+	if decType {
+		var t *Type
+		t, err = decodeType(r)
+		if err != nil {
+			return
+		}
+		if t.Base != stringKind {
+			err = errorf("Unable to decode %v into *[]uint8", t)
+			return
+		}
 	}
 	var l uint
 	if err = rawdecodeuint(r, &l); err != nil {
@@ -181,11 +336,7 @@ func decodeSliceOfuint8(r *decodeReader, v *[]uint8) (err error) {
 	return
 }
 
-func decodeinterface__(r *decodeReader, i *interface{}) (err error) {
-	return rawdecodeinterface__(r, i)
-}
-
-func decodeInterfaceWithKind(r *decodeReader, t *Type, i *interface{}) (err error) {
+func decodeInterfaceWithType(r *decodeReader, t *Type, i *interface{}) (err error) {
 	switch t.Base {
 	case interface__Kind:
 		if err = rawdecodeinterface__(r, i); err != nil {
@@ -306,7 +457,7 @@ func decodeInterfaceWithKind(r *decodeReader, t *Type, i *interface{}) (err erro
 		sl := make([]interface{}, int(l))
 		for i := 0; i < int(l); i++ {
 			var el interface{}
-			if err = decodeInterfaceWithKind(r, t.Value, &el); err != nil {
+			if err = decodeInterfaceWithType(r, t.Value, &el); err != nil {
 				return
 			}
 			sl[i] = el
@@ -320,11 +471,11 @@ func decodeInterfaceWithKind(r *decodeReader, t *Type, i *interface{}) (err erro
 		m := make(map[interface{}]interface{}, int(l))
 		for i := 0; i < int(l); i++ {
 			var k interface{}
-			if err = decodeInterfaceWithKind(r, t.Key, &k); err != nil {
+			if err = decodeInterfaceWithType(r, t.Key, &k); err != nil {
 				return
 			}
 			var v interface{}
-			if err = decodeInterfaceWithKind(r, t.Value, &v); err != nil {
+			if err = decodeInterfaceWithType(r, t.Value, &v); err != nil {
 				return
 			}
 			m[k] = v
@@ -336,16 +487,16 @@ func decodeInterfaceWithKind(r *decodeReader, t *Type, i *interface{}) (err erro
 	return
 }
 
+func decodeinterface__(r *decodeReader, decType bool, i *interface{}) (err error) {
+	return rawdecodeinterface__(r, i)
+}
+
 func rawdecodeinterface__(r *decodeReader, i *interface{}) (err error) {
 	t, err := decodeType(r)
 	if err != nil {
 		return
 	}
-	return decodeInterfaceWithKind(r, t, i)
-}
-
-func rawdecodereflect_Value(r *decodeReader, v *reflect.Value) (err error) {
-	return
+	return decodeInterfaceWithType(r, t, i)
 }
 
 func rawdecodebool(r *decodeReader, b *bool) (err error) {

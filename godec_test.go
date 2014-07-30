@@ -224,7 +224,7 @@ func encodeDecodeWithCMP(t *testing.T, src, cmp, dst interface{}) {
 type nestedThing1 map[string][]int
 type nestedThing2 map[interface{}]map[int]interface{}
 
-func TestEncodeDecodeNestedTypedThingsToInterfaces(t *testing.T) {
+func TestManualEncodeDecodeNestedTypedThingsToInterfaces(t *testing.T) {
 	var dst interface{}
 	encodeDecodeWithCMP(t, nestedThing1{
 		"a": []int{1, 2, 3},
@@ -264,7 +264,7 @@ type structThing2 struct {
 	C *structThing1
 }
 
-func TestEncodeDecodeStructTypesToInterfaces(t *testing.T) {
+func TestManualEncodeDecodeStructTypesToInterfaces(t *testing.T) {
 	var dst interface{}
 	encodeDecodeWithCMP(t, structThing1{
 		A: 33,
@@ -298,7 +298,7 @@ func TestEncodeDecodeStructTypesToInterfaces(t *testing.T) {
 	}, &dst)
 }
 
-func TestEncodeDecodeNestedInterfaces(t *testing.T) {
+func TestManualEncodeDecodeNestedInterfaces(t *testing.T) {
 	var dst interface{}
 	encodeDecode(t, map[interface{}]interface{}{
 		"hej": 33,
@@ -335,4 +335,32 @@ func TestEncodeDecodeNestedInterfaces(t *testing.T) {
 			"hepp2",
 		},
 	}, &dst)
+}
+
+type sliceType1 []string
+type sliceType2 [][]int
+type sliceType3 []*string
+
+func TestManualEncodeDecodeSliceTypes(t *testing.T) {
+	var dst sliceType1
+	encodeDecode(t, sliceType1{
+		"a",
+		"b",
+	}, &dst)
+	var dst2 sliceType2
+	encodeDecode(t, sliceType2{
+		[]int{
+			3, 4, 5,
+		},
+		[]int{
+			6, 7, 8,
+		},
+	}, &dst2)
+	s1 := "a"
+	s2 := "b"
+	var dst3 sliceType3
+	encodeDecode(t, sliceType3{
+		&s1,
+		&s2,
+	}, &dst3)
 }
