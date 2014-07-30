@@ -55,7 +55,7 @@ func Marshal(i interface{}) (result []byte, err error) {
 	w := &encodeWriter{
 		buf: make([]byte, 1<<6),
 	}
-	if err = encodeinterface__(w, true, i); err != nil {
+	if err = encodeinterface__(w, true, i, nil); err != nil {
 		return
 	}
 	result = w.buf[:w.pos]
@@ -163,7 +163,7 @@ func encodereflect_Value(w *encodeWriter, encType bool, v reflect.Value) (err er
 			for el.Kind() == reflect.Ptr {
 				el = el.Elem()
 			}
-			if err = encodeinterface__(w, typ.Value.Base == interface__Kind, v.Index(i).Interface()); err != nil {
+			if err = encodeinterface__(w, typ.Value.Base == interface__Kind, el.Interface(), &el); err != nil {
 				return
 			}
 		}
@@ -172,10 +172,17 @@ func encodereflect_Value(w *encodeWriter, encType bool, v reflect.Value) (err er
 			return
 		}
 		for _, key := range v.MapKeys() {
-			if err = encodeinterface__(w, typ.Key.Base == interface__Kind, key.Interface()); err != nil {
+			value := v.MapIndex(key)
+			for key.Kind() == reflect.Ptr {
+				key = key.Elem()
+			}
+			for value.Kind() == reflect.Ptr {
+				value = value.Elem()
+			}
+			if err = encodeinterface__(w, typ.Key.Base == interface__Kind, key.Interface(), &key); err != nil {
 				return
 			}
-			if err = encodeinterface__(w, typ.Value.Base == interface__Kind, v.MapIndex(key).Interface()); err != nil {
+			if err = encodeinterface__(w, typ.Value.Base == interface__Kind, value.Interface(), &value); err != nil {
 				return
 			}
 		}
@@ -189,7 +196,11 @@ func encodereflect_Value(w *encodeWriter, encType bool, v reflect.Value) (err er
 			if err = rawencodestring(w, refType.Field(i).Name); err != nil {
 				return
 			}
-			if err = encodeinterface__(w, true, v.Field(i).Interface()); err != nil {
+			val := v.Field(i)
+			for val.Kind() == reflect.Ptr {
+				val = val.Elem()
+			}
+			if err = encodeinterface__(w, true, val.Interface(), &val); err != nil {
 				return
 			}
 		}
@@ -231,7 +242,7 @@ func rawencodestring(w *encodeWriter, s string) (err error) {
 }
 
 // The special case for byte slices is here, and we treat byte slices exactly like strings.
-func encodeSliceOfuint8(w *encodeWriter, encType bool, v []uint8) (err error) {
+func encodeSliceOfuint8(w *encodeWriter, encType bool, v []uint8, val *reflect.Value) (err error) {
 	if encType {
 		if err = encodeType(w, &Type{Base: stringKind}); err != nil {
 			return

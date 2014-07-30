@@ -16,17 +16,17 @@ import (
 // But we skip []byte, because they are so darn simple to encode that we do it in another explicit function.
 {{range $index, $name := $sliceEncodeable}}
 {{if ne $name "uint8"}}
-func encodeSliceOf{{gofilter $name}}(w *encodeWriter, encType bool, v []{{$name}}) (err error) {
+func encodeSliceOf{{gofilter $name}}(w *encodeWriter, encType bool, v []{{$name}}, val *reflect.Value) (err error) {
   if encType {
 		if err = encodeType(w, &Type{Base: sliceKind, Value: &Type{Base: {{gofilter $name}}Kind}}); err != nil {
 			return
 		}
 	}
-	if err = encodeuint(w, false, uint(len(v))); err != nil {
+	if err = encodeuint(w, false, uint(len(v)), nil); err != nil {
 		return
 	}
 	for _, el := range v {
-		if err = encode{{gofilter $name}}(w, "{{gofilter $name}}" == "interface__", el); err != nil {
+		if err = encode{{gofilter $name}}(w, "{{gofilter $name}}" == "interface__", el, nil); err != nil {
 			return
 		}
 	}
@@ -34,17 +34,17 @@ func encodeSliceOf{{gofilter $name}}(w *encodeWriter, encType bool, v []{{$name}
 }
 {{end}}
 
-func encodeSliceOf{{gofilter $name}}Ptr(w *encodeWriter, encType bool, v []*{{$name}}) (err error) {
+func encodeSliceOf{{gofilter $name}}Ptr(w *encodeWriter, encType bool, v []*{{$name}}, val *reflect.Value) (err error) {
   if encType {
 		if err = encodeType(w, &Type{Base: sliceKind, Value: &Type{Base: {{gofilter $name}}Kind}}); err != nil {
 			return
 		}
 	}
-	if err = encodeuint(w, false, uint(len(v))); err != nil {
+	if err = encodeuint(w, false, uint(len(v)), nil); err != nil {
 		return
 	}
 	for _, el := range v {
-		if err = encode{{gofilter $name}}(w, "{{gofilter $name}}" == "interface__", *el); err != nil {
+		if err = encode{{gofilter $name}}(w, "{{gofilter $name}}" == "interface__", *el, nil); err != nil {
 			return
 		}
 	}
@@ -56,80 +56,80 @@ func encodeSliceOf{{gofilter $name}}Ptr(w *encodeWriter, encType bool, v []*{{$n
 // If element types are pointers, the element kind is bitwise ORed with reflect.Ptr.
 {{range $index1, $name1 := $mapEncodeable}}
 {{range $index2, $name2 := $mapEncodeable}}
-func encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w *encodeWriter, encType bool, v map[{{$name1}}]{{$name2}}) (err error) {
+func encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w *encodeWriter, encType bool, v map[{{$name1}}]{{$name2}}, val *reflect.Value) (err error) {
   if encType {
 		if err = encodeType(w, &Type{Base: mapKind, Key: &Type{Base: {{gofilter $name1}}Kind}, Value: &Type{Base: {{gofilter $name2}}Kind}}); err != nil {
 			return
 		}
 	}
-	if err = encodeuint(w, false, uint(len(v))); err != nil {
+	if err = encodeuint(w, false, uint(len(v)), nil); err != nil {
 		return
 	}
 	for key, value := range v {
-		if err = encode{{gofilter $name1}}(w, "{{gofilter $name1}}" == "interface__", key); err != nil {
+		if err = encode{{gofilter $name1}}(w, "{{gofilter $name1}}" == "interface__", key, nil); err != nil {
 			return
 		}
-		if err = encode{{gofilter $name2}}(w, "{{gofilter $name2}}" == "interface__", value); err != nil {
+		if err = encode{{gofilter $name2}}(w, "{{gofilter $name2}}" == "interface__", value, nil); err != nil {
 			return
 		}
 	}
 	return
 }
 
-func encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(w *encodeWriter, encType bool, v map[*{{$name1}}]{{$name2}}) (err error) {
+func encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(w *encodeWriter, encType bool, v map[*{{$name1}}]{{$name2}}, val *reflect.Value) (err error) {
   if encType {
 		if err = encodeType(w, &Type{Base: mapKind, Key: &Type{Base: {{gofilter $name1}}Kind}, Value: &Type{Base: {{gofilter $name2}}Kind}}); err != nil {
 			return
 		}
 	}
-	if err = encodeuint(w, false, uint(len(v))); err != nil {
+	if err = encodeuint(w, false, uint(len(v)), nil); err != nil {
 		return
 	}
 	for key, value := range v {
-		if err = encode{{gofilter $name1}}(w, "{{gofilter $name1}}" == "interface__", *key); err != nil {
+		if err = encode{{gofilter $name1}}(w, "{{gofilter $name1}}" == "interface__", *key, nil); err != nil {
 			return
 		}
-		if err = encode{{gofilter $name2}}(w, "{{gofilter $name2}}" == "interface__", value); err != nil {
+		if err = encode{{gofilter $name2}}(w, "{{gofilter $name2}}" == "interface__", value, nil); err != nil {
 			return
 		}
 	}
 	return
 }
 
-func encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(w *encodeWriter, encType bool, v map[{{$name1}}]*{{$name2}}) (err error) {
+func encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(w *encodeWriter, encType bool, v map[{{$name1}}]*{{$name2}}, val *reflect.Value) (err error) {
   if encType {
 		if err = encodeType(w, &Type{Base: mapKind, Key: &Type{Base: {{gofilter $name1}}Kind}, Value: &Type{Base: {{gofilter $name2}}Kind}}); err != nil {
 			return
 		}
 	}
-	if err = encodeuint(w, false, uint(len(v))); err != nil {
+	if err = encodeuint(w, false, uint(len(v)), nil); err != nil {
 		return
 	}
 	for key, value := range v {
-		if err = encode{{gofilter $name1}}(w, "{{gofilter $name1}}" == "interface__", key); err != nil {
+		if err = encode{{gofilter $name1}}(w, "{{gofilter $name1}}" == "interface__", key, nil); err != nil {
 			return
 		}
-		if err = encode{{gofilter $name2}}(w, "{{gofilter $name2}}" == "interface__", *value); err != nil {
+		if err = encode{{gofilter $name2}}(w, "{{gofilter $name2}}" == "interface__", *value, nil); err != nil {
 			return
 		}
 	}
 	return
 }
 
-func encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w *encodeWriter, encType bool, v map[*{{$name1}}]*{{$name2}}) (err error) {
+func encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w *encodeWriter, encType bool, v map[*{{$name1}}]*{{$name2}}, val *reflect.Value) (err error) {
   if encType {
 		if err = encodeType(w, &Type{Base: mapKind, Key: &Type{Base: {{gofilter $name1}}Kind}, Value: &Type{Base: {{gofilter $name2}}Kind}}); err != nil {
 			return
 		}
 	}
-	if err = encodeuint(w, false, uint(len(v))); err != nil {
+	if err = encodeuint(w, false, uint(len(v)), nil); err != nil {
 		return
 	}
 	for key, value := range v {
-		if err = encode{{gofilter $name1}}(w, "{{gofilter $name1}}" == "interface__", *key); err != nil {
+		if err = encode{{gofilter $name1}}(w, "{{gofilter $name1}}" == "interface__", *key, nil); err != nil {
 			return
 		}
-		if err = encode{{gofilter $name2}}(w, "{{gofilter $name2}}" == "interface__", *value); err != nil {
+		if err = encode{{gofilter $name2}}(w, "{{gofilter $name2}}" == "interface__", *value, nil); err != nil {
 			return
 		}
 	}
@@ -139,7 +139,7 @@ func encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w *encodeWriter, 
 {{end}}
 
 {{range $index, $name := $encodeable}}
-func encode{{gofilter $name}}(w *encodeWriter, encType bool, v {{$name}}) (err error) {
+func encode{{gofilter $name}}(w *encodeWriter, encType bool, v {{$name}}, val *reflect.Value) (err error) {
   if encType {
 	  if err = encodeType(w, &Type{Base: {{gofilter $name}}Kind}); err != nil {
       return
@@ -149,46 +149,46 @@ func encode{{gofilter $name}}(w *encodeWriter, encType bool, v {{$name}}) (err e
 }
 {{end}}
 
-func encodeinterface__(w *encodeWriter, encType bool, i interface{}) (err error) {
+func encodeinterface__(w *encodeWriter, encType bool, i interface{}, val *reflect.Value) (err error) {
 	switch v := i.(type) {
 
 // This does not include interface{} which is handled by this func.
 {{range $index, $name := $encodeable}}
 	case {{$name}}:
-		return encode{{gofilter $name}}(w, encType, v)
+		return encode{{gofilter $name}}(w, encType, v, nil)
 {{end}}
 {{range $index, $name := $pointerEncodeable}}
 	case *{{$name}}:
-		return encode{{gofilter $name}}(w, encType, *v)
+		return encode{{gofilter $name}}(w, encType, *v, nil)
 {{end}}
 {{range $index, $name := $sliceEncodeable}}
 	case []{{$name}}:
-		return encodeSliceOf{{gofilter $name}}(w, encType, v)
+		return encodeSliceOf{{gofilter $name}}(w, encType, v, nil)
 	case *[]{{$name}}:
-		return encodeSliceOf{{gofilter $name}}(w, encType, *v)
+		return encodeSliceOf{{gofilter $name}}(w, encType, *v, nil)
 	case []*{{$name}}:
-		return encodeSliceOf{{gofilter $name}}Ptr(w, encType, v)
+		return encodeSliceOf{{gofilter $name}}Ptr(w, encType, v, nil)
 	case *[]*{{$name}}:
-		return encodeSliceOf{{gofilter $name}}Ptr(w, encType, *v)
+		return encodeSliceOf{{gofilter $name}}Ptr(w, encType, *v, nil)
 {{end}}
 {{range $index1, $name1 := $mapEncodeable}}
 {{range $index2, $name2 := $mapEncodeable}}
 	case map[{{$name1}}]{{$name2}}:
-		return encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w, encType, v)
+		return encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w, encType, v, nil)
 	case *map[{{$name1}}]{{$name2}}:
-		return encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w, encType, *v)
+		return encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w, encType, *v, nil)
 	case map[*{{$name1}}]{{$name2}}:
-		return encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(w, encType, v)
+		return encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(w, encType, v, nil)
 	case *map[*{{$name1}}]{{$name2}}:
-		return encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(w, encType, *v)
+		return encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}(w, encType, *v, nil)
 	case map[{{$name1}}]*{{$name2}}:
-		return encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(w, encType, v)
+		return encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(w, encType, v, nil)
 	case *map[{{$name1}}]*{{$name2}}:
-		return encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(w, encType, *v)
+		return encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}Ptr(w, encType, *v, nil)
 	case map[*{{$name1}}]*{{$name2}}:
-		return encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w, encType, v)
+		return encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w, encType, v, nil)
 	case *map[*{{$name1}}]*{{$name2}}:
-		return encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w, encType, *v)
+		return encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w, encType, *v, nil)
 {{end}}
 {{end}}
 // Finally, the default will use the magical mystery powers of reflect to encode whatever we encounter.
@@ -196,7 +196,11 @@ func encodeinterface__(w *encodeWriter, encType bool, i interface{}) (err error)
 	  if bm, ok := i.(encoding.BinaryMarshaler); ok {
 		  return encodebinary_Marshaler(w, encType, bm)
 		} else {
-			return encodereflect_Value(w, encType, reflect.ValueOf(i))
+		  if val == nil {
+			  v := reflect.ValueOf(i)
+				val = &v
+			}
+			return encodereflect_Value(w, encType, *val)
 		}
 	}
 
