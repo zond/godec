@@ -50,7 +50,8 @@ func encodeSliceOf{{gofilter $name}}Ptr(w *encodeWriter, v []*{{$name}}) (err er
 
 // All maps are encoded by encoding mapKind, the key kind, the value kind and the length. Then all k/v pairs.
 // If element types are pointers, the element kind is bitwise ORed with reflect.Ptr.
-{{range $index1, $name1 := $mapEncodeable}}{{range $index2, $name2 := $mapEncodeable}}
+{{range $index1, $name1 := $mapEncodeable}}
+{{range $index2, $name2 := $mapEncodeable}}
 func encodeMapOf{{gofilter $name1}}To{{gofilter $name2}}(w *encodeWriter, v map[{{$name1}}]{{$name2}}) (err error) {
 	if err = encodeType(w, &Type{Base: mapKind, Key: &Type{Base: {{gofilter $name1}}Kind}, Value: &Type{Base: {{gofilter $name2}}Kind}}); err != nil {
 		return
@@ -122,7 +123,8 @@ func encodeMapOf{{gofilter $name1}}PtrTo{{gofilter $name2}}Ptr(w *encodeWriter, 
 	}
 	return
 }
-{{end}}{{end}}
+{{end}}
+{{end}}
 
 // All primitive types are expressed as encoding their kind and then their raw data
 {{range $index, $name := $encodeable}}
@@ -134,7 +136,7 @@ func encode{{gofilter $name}}(w *encodeWriter, v {{$name}}) (err error) {
 }
 {{end}}
 
-func encodeinterface__(w *encodeWriter, i interface{}) (err error) {
+func rawencodeinterface__(w *encodeWriter, i interface{}) (err error) {
 	switch v := i.(type) {
 
 // This does not include interface{} which is handled by this func.

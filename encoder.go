@@ -55,7 +55,7 @@ func Marshal(i interface{}) (result []byte, err error) {
 	w := &encodeWriter{
 		buf: make([]byte, 1<<6),
 	}
-	if err = encodeinterface__(w, i); err != nil {
+	if err = rawencodeinterface__(w, i); err != nil {
 		return
 	}
 	result = w.buf[:w.pos]
@@ -271,8 +271,8 @@ func encodebinary_Marshaler(w *encodeWriter, bm encoding.BinaryMarshaler) (err e
 	return
 }
 
-func rawencodeinterface__(w *encodeWriter, v interface{}) (err error) {
-	return encodeinterface__(w, v)
+func encodeinterface__(w *encodeWriter, v interface{}) (err error) {
+	return rawencodeinterface__(w, v)
 }
 
 func rawencodestring(w *encodeWriter, s string) (err error) {
