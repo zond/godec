@@ -55,7 +55,7 @@ func Marshal(i interface{}) (result []byte, err error) {
 	w := &encodeWriter{
 		buf: make([]byte, 1<<6),
 	}
-	if err = rawencodeinterface__(w, i); err != nil {
+	if err = encodeinterface__(w, true, i); err != nil {
 		return
 	}
 	result = w.buf[:w.pos]
@@ -161,24 +161,24 @@ func getTypeOf(t reflect.Type) (result *Type, err error) {
 		result = &Type{Base: stringKind}
 	case reflect.Struct:
 		result = &Type{Base: structKind}
+	case reflect.Interface:
+		result = &Type{Base: interface__Kind}
 	default:
 		err = errorf("Unable to encode %v", t)
 	}
 	return
 }
 
-func encodereflect_Value(w *encodeWriter, v reflect.Value) (err error) {
+func encodereflect_Value(w *encodeWriter, encType bool, v reflect.Value) (err error) {
 	var typ *Type
 	if typ, err = getTypeOf(v.Type()); err != nil {
 		return
 	}
-	if err = encodeType(w, typ); err != nil {
-		return
+	if encType {
+		if err = encodeType(w, typ); err != nil {
+			return
+		}
 	}
-	return encodeReflectValueWithoutType(w, v)
-}
-
-func encodeReflectValueWithoutType(w *encodeWriter, v reflect.Value) (err error) {
 	for v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
@@ -222,7 +222,7 @@ func encodeReflectValueWithoutType(w *encodeWriter, v reflect.Value) (err error)
 			return
 		}
 		for i := 0; i < v.Len(); i++ {
-			if err = encodeReflectValueWithoutType(w, v.Index(i)); err != nil {
+			if err = encodeinterface__(w, typ.Value.Base == interface__Kind, v.Index(i).Interface()); err != nil {
 				return
 			}
 		}
@@ -231,10 +231,10 @@ func encodeReflectValueWithoutType(w *encodeWriter, v reflect.Value) (err error)
 			return
 		}
 		for _, key := range v.MapKeys() {
-			if err = encodeReflectValueWithoutType(w, key); err != nil {
+			if err = encodeinterface__(w, typ.Key.Base == interface__Kind, key.Interface()); err != nil {
 				return
 			}
-			if err = encodeReflectValueWithoutType(w, v.MapIndex(key)); err != nil {
+			if err = encodeinterface__(w, typ.Value.Base == interface__Kind, v.MapIndex(key).Interface()); err != nil {
 				return
 			}
 		}
@@ -242,8 +242,6 @@ func encodeReflectValueWithoutType(w *encodeWriter, v reflect.Value) (err error)
 		err = rawencodestring(w, v.String())
 	case reflect.Struct:
 		panic("no support for struct encoding yet")
-	case reflect.Interface:
-		err = rawencodeinterface__(w, v.Interface())
 	default:
 		err = errorf("Unable to encode %v", v.Interface())
 	}
@@ -254,9 +252,11 @@ func rawencodetime_Time(w *encodeWriter, t time.Time) (err error) {
 	return rawencodeint64(w, t.UnixNano())
 }
 
-func encodebinary_Marshaler(w *encodeWriter, bm encoding.BinaryMarshaler) (err error) {
-	if err = encodeType(w, &Type{Base: binaryUnMarshalerKind}); err != nil {
-		return
+func encodebinary_Marshaler(w *encodeWriter, encType bool, bm encoding.BinaryMarshaler) (err error) {
+	if encType {
+		if err = encodeType(w, &Type{Base: binaryUnMarshalerKind}); err != nil {
+			return
+		}
 	}
 	b, err := bm.MarshalBinary()
 	if err != nil {
@@ -271,10 +271,6 @@ func encodebinary_Marshaler(w *encodeWriter, bm encoding.BinaryMarshaler) (err e
 	return
 }
 
-func encodeinterface__(w *encodeWriter, v interface{}) (err error) {
-	return rawencodeinterface__(w, v)
-}
-
 func rawencodestring(w *encodeWriter, s string) (err error) {
 	if err = rawencodeuint64(w, uint64(len(s))); err != nil {
 		return
@@ -284,9 +280,11 @@ func rawencodestring(w *encodeWriter, s string) (err error) {
 }
 
 // The special case for byte slices is here, and we treat byte slices exactly like strings.
-func encodeSliceOfuint8(w *encodeWriter, v []uint8) (err error) {
-	if err = encodeType(w, &Type{Base: stringKind}); err != nil {
-		return
+func encodeSliceOfuint8(w *encodeWriter, encType bool, v []uint8) (err error) {
+	if encType {
+		if err = encodeType(w, &Type{Base: stringKind}); err != nil {
+			return
+		}
 	}
 	if err = rawencodeuint(w, uint(len(v))); err != nil {
 		return

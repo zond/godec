@@ -188,6 +188,10 @@ func DeepEqual(i1, i2 interface{}) bool {
 }
 
 func encodeDecode(t *testing.T, src, dst interface{}) {
+	encodeDecodeWithCMP(t, src, src, dst)
+}
+
+func encodeDecodeWithCMP(t *testing.T, src, cmp, dst interface{}) {
 	buf := &bytes.Buffer{}
 	err := NewEncoder(buf).Encode(src)
 	if err != nil {
@@ -197,9 +201,9 @@ func encodeDecode(t *testing.T, src, dst interface{}) {
 		t.Fatalf("Unable to decode to %v: %v", reflect.ValueOf(dst).Elem().Interface(), err)
 	}
 	dstElem := reflect.ValueOf(dst).Elem().Interface()
-	toCmp := src
-	if srcVal := reflect.ValueOf(src); srcVal.Kind() == reflect.Ptr {
-		toCmp = srcVal.Elem().Interface()
+	toCmp := cmp
+	if cmpVal := reflect.ValueOf(toCmp); cmpVal.Kind() == reflect.Ptr {
+		toCmp = cmpVal.Elem().Interface()
 	}
 	if !DeepEqual(toCmp, dstElem) {
 		t.Fatalf("Encoding/decoding %#v produced %#v", toCmp, dstElem)
@@ -218,12 +222,35 @@ func encodeDecode(t *testing.T, src, dst interface{}) {
 }
 
 type nestedThing1 map[string][]int
+type nestedThing2 map[interface{}]map[int]interface{}
 
 func TestEncodeDecodeNestedTypedThingsToInterfaces(t *testing.T) {
 	var dst interface{}
-	encodeDecode(t, nestedThing1{
+	encodeDecodeWithCMP(t, nestedThing1{
 		"a": []int{1, 2, 3},
 		"b": []int{4, 5, 6},
+	}, map[interface{}]interface{}{
+		"a": []interface{}{
+			int64(1), int64(2), int64(3),
+		},
+		"b": []interface{}{
+			int64(4), int64(5), int64(6),
+		},
+	}, &dst)
+	encodeDecodeWithCMP(t, nestedThing2{
+		"gna": {
+			4: "hehu",
+		},
+		int64(42): {
+			5: int64(44),
+		},
+	}, map[interface{}]interface{}{
+		"gna": map[interface{}]interface{}{
+			int64(4): "hehu",
+		},
+		int64(42): map[interface{}]interface{}{
+			int64(5): int64(44),
+		},
 	}, &dst)
 }
 
