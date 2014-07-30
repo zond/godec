@@ -160,7 +160,7 @@ func getTypeOf(t reflect.Type) (result *Type, err error) {
 	case reflect.String:
 		result = &Type{Base: stringKind}
 	case reflect.Struct:
-		result = &Type{Base: structKind}
+		result = &Type{Base: mapKind, Key: &Type{Base: stringKind}, Value: &Type{Base: interface__Kind}}
 	case reflect.Interface:
 		result = &Type{Base: interface__Kind}
 	default:
@@ -170,17 +170,18 @@ func getTypeOf(t reflect.Type) (result *Type, err error) {
 }
 
 func encodereflect_Value(w *encodeWriter, encType bool, v reflect.Value) (err error) {
+	for v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
 	var typ *Type
-	if typ, err = getTypeOf(v.Type()); err != nil {
+	refType := v.Type()
+	if typ, err = getTypeOf(refType); err != nil {
 		return
 	}
 	if encType {
 		if err = encodeType(w, typ); err != nil {
 			return
 		}
-	}
-	for v.Kind() == reflect.Ptr {
-		v = v.Elem()
 	}
 	switch v.Kind() {
 	case reflect.Bool:
@@ -241,7 +242,17 @@ func encodereflect_Value(w *encodeWriter, encType bool, v reflect.Value) (err er
 	case reflect.String:
 		err = rawencodestring(w, v.String())
 	case reflect.Struct:
-		panic("no support for struct encoding yet")
+		if err = rawencodeuint(w, uint(refType.NumField())); err != nil {
+			return
+		}
+		for i := 0; i < refType.NumField(); i++ {
+			if err = rawencodestring(w, refType.Field(i).Name); err != nil {
+				return
+			}
+			if err = encodeinterface__(w, true, v.Field(i).Interface()); err != nil {
+				return
+			}
+		}
 	default:
 		err = errorf("Unable to encode %v", v.Interface())
 	}

@@ -254,6 +254,50 @@ func TestEncodeDecodeNestedTypedThingsToInterfaces(t *testing.T) {
 	}, &dst)
 }
 
+type structThing1 struct {
+	A int
+	B string
+}
+type structThing2 struct {
+	A int
+	B string
+	C *structThing1
+}
+
+func TestEncodeDecodeStructTypesToInterfaces(t *testing.T) {
+	var dst interface{}
+	encodeDecodeWithCMP(t, structThing1{
+		A: 33,
+		B: "hehu",
+	}, map[interface{}]interface{}{
+		"A": 33,
+		"B": "hehu",
+	}, &dst)
+	var dst2 map[string]interface{}
+	encodeDecodeWithCMP(t, structThing1{
+		A: 33,
+		B: "hehu",
+	}, map[string]interface{}{
+		"A": 33,
+		"B": "hehu",
+	}, &dst2)
+	encodeDecodeWithCMP(t, &structThing2{
+		A: 41,
+		B: "blapp",
+		C: &structThing1{
+			A: 11,
+			B: "JAJA",
+		},
+	}, map[interface{}]interface{}{
+		"A": 41,
+		"B": "blapp",
+		"C": map[interface{}]interface{}{
+			"A": 11,
+			"B": "JAJA",
+		},
+	}, &dst)
+}
+
 func TestEncodeDecodeNestedInterfaces(t *testing.T) {
 	var dst interface{}
 	encodeDecode(t, map[interface{}]interface{}{
