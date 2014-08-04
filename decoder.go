@@ -126,6 +126,12 @@ func decodereflect_Value(r *decodeReader, decType bool, v reflect.Value) (err er
 		v = v.Elem()
 	}
 	switch v.Kind() {
+	case reflect.Interface:
+		var i interface{}
+		if err = decodeinterface__(r, decType, &i); err != nil {
+			return
+		}
+		v.Set(reflect.ValueOf(i))
 	case reflect.Bool:
 		var b bool
 		if err = decodebool(r, decType, &b); err != nil {
@@ -231,18 +237,20 @@ func decodereflect_Value(r *decodeReader, decType bool, v reflect.Value) (err er
 	case reflect.Array:
 		fallthrough
 	case reflect.Slice:
-		var encodedType *Type
-		if encodedType, err = decodeType(r); err != nil {
-			return
-		}
-		var valType *Type
 		refType := v.Type()
-		if valType, err = getTypeOf(refType); err != nil {
-			return
-		}
-		if !encodedType.Equal(valType) {
-			err = errorf("Can't decode %v into %v", encodedType, valType)
-			return
+		if decType {
+			var encodedType *Type
+			if encodedType, err = decodeType(r); err != nil {
+				return
+			}
+			var valType *Type
+			if valType, err = getTypeOf(refType); err != nil {
+				return
+			}
+			if !encodedType.Equal(valType) {
+				err = errorf("Can't decode %v into %v", encodedType, valType)
+				return
+			}
 		}
 		var l uint
 		if err = rawdecodeuint(r, &l); err != nil {
@@ -265,6 +273,53 @@ func decodereflect_Value(r *decodeReader, decType bool, v reflect.Value) (err er
 			v.Index(i).Set(origEl.Elem())
 		}
 	case reflect.Map:
+		refType := v.Type()
+		if decType {
+			var encodedType *Type
+			if encodedType, err = decodeType(r); err != nil {
+				return
+			}
+			var valType *Type
+			if valType, err = getTypeOf(refType); err != nil {
+				return
+			}
+			if !encodedType.Equal(valType) {
+				err = errorf("Can't decode %v into %v", encodedType, valType)
+				return
+			}
+		}
+		var l uint
+		if err = rawdecodeuint(r, &l); err != nil {
+			return
+		}
+		v.Set(reflect.MakeMap(refType))
+		for i := 0; i < int(l); i++ {
+			keyType := refType.Key()
+			origKey := reflect.New(keyType)
+			key := origKey
+			for keyType.Kind() == reflect.Ptr {
+				nextKey := reflect.New(keyType.Elem())
+				key.Elem().Set(nextKey)
+				key = key.Elem()
+				keyType = keyType.Elem()
+			}
+			if err = decode(r, false, key.Interface()); err != nil {
+				return
+			}
+			elType := refType.Elem()
+			origEl := reflect.New(elType)
+			el := origEl
+			for elType.Kind() == reflect.Ptr {
+				nextEl := reflect.New(elType.Elem())
+				el.Elem().Set(nextEl)
+				el = el.Elem()
+				elType = elType.Elem()
+			}
+			if err = decode(r, false, el.Interface()); err != nil {
+				return
+			}
+			v.SetMapIndex(origKey.Elem(), origEl.Elem())
+		}
 	case reflect.Struct:
 	}
 	return

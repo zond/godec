@@ -106,7 +106,7 @@ func encodeType(w *encodeWriter, t *Type) (err error) {
 }
 
 func encodereflect_Value(w *encodeWriter, encType bool, v reflect.Value) (err error) {
-	for v.Kind() == reflect.Ptr {
+	for k := v.Kind(); k == reflect.Ptr || k == reflect.Interface; k = v.Kind() {
 		v = v.Elem()
 	}
 	var typ *Type

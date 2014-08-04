@@ -2,7 +2,6 @@ package godec
 
 import (
 	"bytes"
-	"fmt"
 	"math/rand"
 	"os"
 	"reflect"
@@ -138,53 +137,124 @@ func randomtime_Time() time.Time {
 	return time.Unix(0, randomint64())
 }
 
-func convertPtrMap(v reflect.Value) (result reflect.Value) {
-	trueValue := reflect.ValueOf(true)
-	boolType := trueValue.Type()
-	valueType := v.Type().Elem()
-	for valueType.Kind() == reflect.Ptr {
-		valueType = valueType.Elem()
-	}
-	keyType := v.Type().Key()
-	for keyType.Kind() == reflect.Ptr {
-		keyType = keyType.Elem()
-	}
-	containerType := reflect.MapOf(valueType, boolType)
-	result = reflect.MakeMap(reflect.MapOf(keyType, containerType))
-	for _, key := range v.MapKeys() {
-		value := v.MapIndex(key)
-		for key.Kind() == reflect.Ptr {
-			key = key.Elem()
-		}
-		for value.Kind() == reflect.Ptr {
-			value = value.Elem()
-		}
-		valueContainer := result.MapIndex(key)
-		if !valueContainer.IsValid() {
-			valueContainer = reflect.MakeMap(containerType)
-			result.SetMapIndex(key, valueContainer)
-		}
-		valueContainer.SetMapIndex(value, trueValue)
-	}
-	return
+func DeepEqual(i1, i2 interface{}) bool {
+	return deepEqual(reflect.ValueOf(i1), reflect.ValueOf(i2))
 }
 
-func ptrMapDeepEqual(v1, v2 reflect.Value) bool {
-	regMap1 := convertPtrMap(v1)
-	regMap2 := convertPtrMap(v2)
-	if regMap1.Len() != regMap2.Len() {
-		fmt.Println("not same len")
+func deepEqual(val1, val2 reflect.Value) bool {
+	for k := val1.Kind(); k == reflect.Ptr || k == reflect.Interface; k = val1.Kind() {
+		val1 = val1.Elem()
+	}
+	for k := val2.Kind(); k == reflect.Ptr || k == reflect.Interface; k = val2.Kind() {
+		val2 = val2.Elem()
+	}
+	if val1.Kind() != val2.Kind() {
 		return false
 	}
-	return reflect.DeepEqual(regMap1.Interface(), regMap2.Interface())
-}
-
-func DeepEqual(i1, i2 interface{}) bool {
-	v1 := reflect.ValueOf(i1)
-	if v1.Kind() == reflect.Map && (v1.Type().Key().Kind() == reflect.Ptr || v1.Type().Elem().Kind() == reflect.Ptr) {
-		return ptrMapDeepEqual(v1, reflect.ValueOf(i2))
+	switch val1.Kind() {
+	case reflect.Bool:
+		return val1.Bool() == val2.Bool()
+	case reflect.Int:
+		fallthrough
+	case reflect.Int8:
+		fallthrough
+	case reflect.Int16:
+		fallthrough
+	case reflect.Int32:
+		fallthrough
+	case reflect.Int64:
+		return val1.Int() == val2.Int()
+	case reflect.Uint:
+		fallthrough
+	case reflect.Uint8:
+		fallthrough
+	case reflect.Uint16:
+		fallthrough
+	case reflect.Uint32:
+		fallthrough
+	case reflect.Uint64:
+		fallthrough
+	case reflect.Uintptr:
+		return val1.Uint() == val2.Uint()
+	case reflect.Float32:
+		fallthrough
+	case reflect.Float64:
+		return val1.Float() == val2.Float()
+	case reflect.Complex64:
+		fallthrough
+	case reflect.Complex128:
+		return val1.Complex() == val2.Complex()
+	case reflect.Array:
+		fallthrough
+	case reflect.Slice:
+		if val1.Len() != val2.Len() {
+			return false
+		}
+		for i := 0; i < val1.Len(); i++ {
+			if !deepEqual(val1.Index(i), val2.Index(i)) {
+				return false
+			}
+		}
+	case reflect.Map:
+		if val1.Len() != val2.Len() {
+			return false
+		}
+		mapType := val1.Type()
+		keyType := mapType.Key()
+		for keyType.Kind() == reflect.Ptr {
+			keyType = keyType.Elem()
+		}
+		fake1 := reflect.MakeMap(reflect.MapOf(keyType, reflect.SliceOf(mapType.Elem())))
+		for _, key := range val1.MapKeys() {
+			origKey := key
+			for key.Kind() == reflect.Ptr {
+				key = key.Elem()
+			}
+			var fakeVals reflect.Value
+			if fakeVals = fake1.MapIndex(key); fakeVals.IsValid() {
+				fakeVals = reflect.Append(fakeVals, val1.MapIndex(origKey))
+			} else {
+				fakeVals = reflect.MakeSlice(reflect.SliceOf(mapType.Elem()), 0, 1)
+				fakeVals = reflect.Append(fakeVals, val1.MapIndex(origKey))
+			}
+			fake1.SetMapIndex(key, fakeVals)
+		}
+		for _, key := range val2.MapKeys() {
+			value := val2.MapIndex(key)
+			for key.Kind() == reflect.Ptr {
+				key = key.Elem()
+			}
+			fake1Vals := fake1.MapIndex(key)
+			if !fake1Vals.IsValid() {
+				return false
+			}
+			found := false
+			for i := 0; i < fake1Vals.Len(); i++ {
+				if deepEqual(value, fake1Vals.Index(i)) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return false
+			}
+		}
+	case reflect.String:
+		return val1.String() == val2.String()
+	case reflect.Struct:
+		if val1.Type() != val2.Type() {
+			return false
+		}
+		typ := val1.Type()
+		for i := 0; i < typ.NumField(); i++ {
+			if !deepEqual(val1.Field(i), val2.Field(i)) {
+				return false
+			}
+		}
+	default:
+		return false
 	}
-	return reflect.DeepEqual(i1, i2)
+	return true
 }
 
 func encodeDecode(t *testing.T, src, dst interface{}) {
@@ -200,25 +270,28 @@ func encodeDecodeWithCMP(t *testing.T, src, cmp, dst interface{}) {
 	if err = NewDecoder(buf).Decode(dst); err != nil {
 		t.Fatalf("Unable to decode to %v: %v", reflect.ValueOf(dst).Elem().Interface(), err)
 	}
-	dstElem := reflect.ValueOf(dst).Elem().Interface()
-	toCmp := cmp
-	if cmpVal := reflect.ValueOf(toCmp); cmpVal.Kind() == reflect.Ptr {
-		toCmp = cmpVal.Elem().Interface()
-	}
-	if !DeepEqual(toCmp, dstElem) {
-		t.Fatalf("Encoding/decoding %#v produced %#v", toCmp, dstElem)
+	if !DeepEqual(cmp, dst) {
+		t.Fatalf("Encoding/decoding %v produced %v", prettify(cmp), prettify(dst))
 	}
 	b, err := Marshal(src)
 	if err != nil {
 		t.Fatalf("Unable to marshal %v: %v", src, err)
 	}
 	if err = Unmarshal(b, dst); err != nil {
-		t.Fatalf("Unable to unmarshal to %v: %v", dstElem, err)
+		t.Fatalf("Unable to unmarshal to %v: %v", dst, err)
 	}
-	dstElem = reflect.ValueOf(dst).Elem().Interface()
-	if !DeepEqual(toCmp, dstElem) {
-		t.Fatalf("Marshalling/unmarshalling %v produced %v", toCmp, dstElem)
+	if !DeepEqual(cmp, dst) {
+		t.Fatalf("Marshalling/unmarshalling %v produced %v", prettify(cmp), prettify(dst))
 	}
+}
+
+func TestManualEncodeDecodeMapOfInterface__PtrToInterface__(t *testing.T) {
+	var dst map[*interface{}]interface{}
+	var a interface{}
+	a = 10
+	encodeDecode(t, map[*interface{}]interface{}{
+		&a: "a",
+	}, &dst)
 }
 
 type nestedThing1 map[string][]int
@@ -362,5 +435,43 @@ func TestManualEncodeDecodeSliceTypes(t *testing.T) {
 	encodeDecode(t, sliceType3{
 		&s1,
 		&s2,
+	}, &dst3)
+}
+
+type mapType1 map[string]int
+type mapType2 map[int]map[string]bool
+type mapType3 map[int]map[*string]*string
+
+func TestManualEncodeDecodeMapTypes(t *testing.T) {
+	var dst1 mapType1
+	encodeDecode(t, mapType1{
+		"a": 1,
+		"b": 2,
+	}, &dst1)
+	var dst2 mapType2
+	encodeDecode(t, mapType2{
+		3: {
+			"a": true,
+			"b": false,
+		},
+		5: {
+			"c": true,
+			"d": true,
+		},
+	}, &dst2)
+	a := "a"
+	b := "b"
+	c := "c"
+	d := "d"
+	var dst3 mapType3
+	encodeDecode(t, mapType3{
+		1: {
+			&a: &b,
+			&c: &d,
+		},
+		2: {
+			&b: &a,
+			&d: &c,
+		},
 	}, &dst3)
 }

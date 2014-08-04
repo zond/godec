@@ -1,6 +1,7 @@
 package godec
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"runtime"
@@ -43,6 +44,14 @@ func (self stackErr) String() string {
 
 func (self stackErr) Error() string {
 	return self.String()
+}
+
+func prettify(obj interface{}) string {
+	b, err := json.MarshalIndent(obj, "", "  ")
+	if err != nil {
+		return fmt.Sprintf("%+v", obj)
+	}
+	return string(b)
 }
 
 func errorf(f string, args ...interface{}) error {
