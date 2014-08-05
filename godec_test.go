@@ -245,10 +245,16 @@ func deepEqual(val1, val2 reflect.Value) bool {
 		if val1.Type() != val2.Type() {
 			return false
 		}
-		typ := val1.Type()
-		for i := 0; i < typ.NumField(); i++ {
-			if !deepEqual(val1.Field(i), val2.Field(i)) {
-				return false
+		switch i := val1.Interface().(type) {
+		case time.Time:
+			i2 := val2.Interface().(time.Time)
+			return i.Equal(i2)
+		default:
+			typ := val1.Type()
+			for i := 0; i < typ.NumField(); i++ {
+				if !deepEqual(val1.Field(i), val2.Field(i)) {
+					return false
+				}
 			}
 		}
 	default:
