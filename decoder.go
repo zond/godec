@@ -261,7 +261,7 @@ func decodereflect_Value(r *decodeReader, decType bool, v reflect.Value) (err er
 			elType := refType.Elem()
 			origEl := reflect.New(elType)
 			el := origEl.Elem()
-			for elType = el.Type(); elType.Kind() == reflect.Ptr; elType = el.Type() {
+			for ; elType.Kind() == reflect.Ptr; elType = elType.Elem() {
 				nextEl := reflect.New(elType.Elem())
 				el.Set(nextEl)
 				el = el.Elem()
@@ -296,7 +296,7 @@ func decodereflect_Value(r *decodeReader, decType bool, v reflect.Value) (err er
 			keyType := refType.Key()
 			origKey := reflect.New(keyType)
 			key := origKey.Elem()
-			for keyType = key.Type(); keyType.Kind() == reflect.Ptr; keyType = key.Type() {
+			for ; keyType.Kind() == reflect.Ptr; keyType = keyType.Elem() {
 				nextKey := reflect.New(keyType.Elem())
 				key.Set(nextKey)
 				key = key.Elem()
@@ -307,7 +307,7 @@ func decodereflect_Value(r *decodeReader, decType bool, v reflect.Value) (err er
 			elType := refType.Elem()
 			origEl := reflect.New(elType)
 			el := origEl.Elem()
-			for elType = el.Type(); elType.Kind() == reflect.Ptr; elType = el.Type() {
+			for ; elType.Kind() == reflect.Ptr; elType = elType.Elem() {
 				nextEl := reflect.New(elType.Elem())
 				el.Set(nextEl)
 				el = el.Elem()
