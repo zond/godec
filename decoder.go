@@ -260,14 +260,13 @@ func decodereflect_Value(r *decodeReader, decType bool, v reflect.Value) (err er
 		for i := 0; i < int(l); i++ {
 			elType := refType.Elem()
 			origEl := reflect.New(elType)
-			el := origEl
-			for elType.Kind() == reflect.Ptr {
+			el := origEl.Elem()
+			for elType = el.Type(); elType.Kind() == reflect.Ptr; elType = el.Type() {
 				nextEl := reflect.New(elType.Elem())
-				el.Elem().Set(nextEl)
+				el.Set(nextEl)
 				el = el.Elem()
-				elType = elType.Elem()
 			}
-			if err = decode(r, false, el.Interface()); err != nil {
+			if err = decode(r, false, el.Addr().Interface()); err != nil {
 				return
 			}
 			v.Index(i).Set(origEl.Elem())
@@ -296,31 +295,59 @@ func decodereflect_Value(r *decodeReader, decType bool, v reflect.Value) (err er
 		for i := 0; i < int(l); i++ {
 			keyType := refType.Key()
 			origKey := reflect.New(keyType)
-			key := origKey
-			for keyType.Kind() == reflect.Ptr {
+			key := origKey.Elem()
+			for keyType = key.Type(); keyType.Kind() == reflect.Ptr; keyType = key.Type() {
 				nextKey := reflect.New(keyType.Elem())
-				key.Elem().Set(nextKey)
+				key.Set(nextKey)
 				key = key.Elem()
-				keyType = keyType.Elem()
 			}
-			if err = decode(r, false, key.Interface()); err != nil {
+			if err = decode(r, false, key.Addr().Interface()); err != nil {
 				return
 			}
 			elType := refType.Elem()
 			origEl := reflect.New(elType)
-			el := origEl
-			for elType.Kind() == reflect.Ptr {
+			el := origEl.Elem()
+			for elType = el.Type(); elType.Kind() == reflect.Ptr; elType = el.Type() {
 				nextEl := reflect.New(elType.Elem())
-				el.Elem().Set(nextEl)
+				el.Set(nextEl)
 				el = el.Elem()
-				elType = elType.Elem()
 			}
-			if err = decode(r, false, el.Interface()); err != nil {
+			if err = decode(r, false, el.Addr().Interface()); err != nil {
 				return
 			}
 			v.SetMapIndex(origKey.Elem(), origEl.Elem())
 		}
 	case reflect.Struct:
+		if decType {
+			var encodedType *Type
+			if encodedType, err = decodeType(r); err != nil {
+				return
+			}
+			if encodedType.Base != mapKind || encodedType.Key.Base != stringKind || encodedType.Value.Base != interface__Kind {
+				err = errorf("Can't decode %v into %#v", encodedType, v)
+				return
+			}
+		}
+		var l uint
+		if err = rawdecodeuint(r, &l); err != nil {
+			return
+		}
+		fieldName := ""
+		for i := 0; i < int(l); i++ {
+			if err = rawdecodestring(r, &fieldName); err != nil {
+				return
+			}
+			if field := v.FieldByName(fieldName); field.IsValid() {
+				for fieldType := field.Type(); field.Kind() == reflect.Ptr; fieldType = field.Type() {
+					nextField := reflect.New(fieldType.Elem())
+					field.Set(nextField)
+					field = field.Elem()
+				}
+				if err = decode(r, true, field.Addr().Interface()); err != nil {
+					return
+				}
+			}
+		}
 	}
 	return
 }

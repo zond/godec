@@ -343,6 +343,23 @@ type structThing2 struct {
 	C *structThing1
 }
 
+func TestManualEncodeDecodeStructTypes(t *testing.T) {
+	var dst structThing1
+	encodeDecode(t, structThing1{
+		A: 33,
+		B: "hehu",
+	}, &dst)
+	var dst2 structThing2
+	encodeDecode(t, &structThing2{
+		A: 41,
+		B: "blapp",
+		C: &structThing1{
+			A: 11,
+			B: "JAJA",
+		},
+	}, &dst2)
+}
+
 func TestManualEncodeDecodeStructTypesToInterfaces(t *testing.T) {
 	var dst interface{}
 	encodeDecodeWithCMP(t, structThing1{
