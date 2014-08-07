@@ -3,6 +3,7 @@ package godec
 import (
 	"encoding"
 	"encoding/binary"
+	"encoding/gob"
 	"io"
 	"math"
 	"reflect"
@@ -324,7 +325,7 @@ func decodereflect_Value(r *decodeReader, decType bool, v reflect.Value) (err er
 				return
 			}
 			if encodedType.Base != mapKind || encodedType.Key.Base != stringKind || encodedType.Value.Base != interface__Kind {
-				err = errorf("Can't decode %v into %#v", encodedType, v)
+				err = errorf("Can't decode %v into %#v", encodedType, v.Interface())
 				return
 			}
 		}
@@ -350,6 +351,29 @@ func decodereflect_Value(r *decodeReader, decType bool, v reflect.Value) (err er
 		}
 	}
 	return
+}
+
+func decodegob_GobDecoder(r *decodeReader, decType bool, gd gob.GobDecoder) (err error) {
+	if decType {
+		var t *Type
+		t, err = decodeType(r)
+		if err != nil {
+			return
+		}
+		if t.Base != gobDEncoderKind {
+			err = errorf("Unable to decode %v into %v", t, gd)
+			return
+		}
+	}
+	var size uint
+	if err = rawdecodeuint(r, &size); err != nil {
+		return
+	}
+	b, err := r.readBytes(int(size))
+	if err != nil {
+		return
+	}
+	return gd.GobDecode(b)
 }
 
 func decodebinary_Unmarshaler(r *decodeReader, decType bool, bu encoding.BinaryUnmarshaler) (err error) {

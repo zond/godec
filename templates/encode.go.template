@@ -8,6 +8,7 @@ package godec
 import (
 	"time"
 	"encoding"
+	"encoding/gob"
 	"reflect"
 )
 
@@ -195,6 +196,8 @@ func encodeinterface__(w *encodeWriter, encType bool, i interface{}, val *reflec
 	default:
 	  if bm, ok := i.(encoding.BinaryMarshaler); ok {
 		  return encodebinary_Marshaler(w, encType, bm)
+		} else if ge, ok := i.(gob.GobEncoder); ok {
+		  return encodegob_GobEncoder(w, encType, ge)
 		} else {
 		  if val == nil {
 			  v := reflect.ValueOf(i)

@@ -7,6 +7,7 @@ package godec
 import (
 	"time"
 	"encoding"
+	"encoding/gob"
 	"reflect"
 )
 
@@ -286,6 +287,8 @@ func decode(r *decodeReader, decType bool, i interface{}) (err error) {
 	default:
 	  if bu, ok := i.(encoding.BinaryUnmarshaler); ok {
 		  return decodebinary_Unmarshaler(r, decType, bu)
+		} else if gd, ok := i.(gob.GobDecoder); ok {
+		  return decodegob_GobDecoder(r, decType, gd)
 		} else {
 			return decodereflect_Value(r, decType, reflect.ValueOf(i))
 		}

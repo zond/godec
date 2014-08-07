@@ -30,6 +30,7 @@ const (
 	mapKind
 	structKind
 	binaryUnMarshalerKind
+	gobDEncoderKind
 )
 
 type stackErr struct {

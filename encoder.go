@@ -3,6 +3,7 @@ package godec
 import (
 	"encoding"
 	"encoding/binary"
+	"encoding/gob"
 	"io"
 	"math"
 	"reflect"
@@ -238,6 +239,25 @@ func rawencodetime_Time(w *encodeWriter, t time.Time) (err error) {
 		return
 	}
 	return w.writeBytes(b)
+}
+
+func encodegob_GobEncoder(w *encodeWriter, encType bool, ge gob.GobEncoder) (err error) {
+	if encType {
+		if err = encodeType(w, &Type{Base: gobDEncoderKind}); err != nil {
+			return
+		}
+	}
+	b, err := ge.GobEncode()
+	if err != nil {
+		return
+	}
+	if err = rawencodeuint(w, uint(len(b))); err != nil {
+		return
+	}
+	if err = w.writeBytes(b); err != nil {
+		return
+	}
+	return
 }
 
 func encodebinary_Marshaler(w *encodeWriter, encType bool, bm encoding.BinaryMarshaler) (err error) {
