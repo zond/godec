@@ -212,16 +212,18 @@ func encodereflect_Value(w *encodeWriter, encType bool, v reflect.Value) (err er
 func collectStructValues(v reflect.Value, refType reflect.Type, names *[]string, values *[]reflect.Value) {
 	for i := 0; i < refType.NumField(); i++ {
 		field := refType.Field(i)
-		if field.Anonymous {
-			collectStructValues(v.Field(i), field.Type, names, values)
-		} else {
-			val := v.Field(i)
-			for val.Kind() == reflect.Ptr {
-				val = val.Elem()
-			}
-			if val.IsValid() {
-				*names = append(*names, field.Name)
-				*values = append(*values, val)
+		if field.PkgPath == "" {
+			if field.Anonymous {
+				collectStructValues(v.Field(i), field.Type, names, values)
+			} else {
+				val := v.Field(i)
+				for val.Kind() == reflect.Ptr {
+					val = val.Elem()
+				}
+				if val.IsValid() {
+					*names = append(*names, field.Name)
+					*values = append(*values, val)
+				}
 			}
 		}
 	}

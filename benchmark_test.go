@@ -64,7 +64,7 @@ func runBenchMap(b *testing.B, m marshaller) {
 	}
 }
 
-type benchStructT1 struct {
+type BenchStructT1 struct {
 	A int
 	B string
 	C []byte
@@ -73,7 +73,7 @@ type benchStructT1 struct {
 	F byte
 }
 
-var benchStruct1 = benchStructT1{
+var benchStruct1 = BenchStructT1{
 	A: 4412,
 	B: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
 	C: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0},
@@ -83,8 +83,8 @@ var benchStruct1 = benchStructT1{
 }
 
 type benchStructT2 struct {
-	benchStructT1
-	G benchStructT1
+	BenchStructT1
+	G BenchStructT1
 	H *benchStructT2
 	I *[]int
 	J map[string]*map[int]int
@@ -104,7 +104,7 @@ var smallIntMap = map[int]int{
 }
 
 var benchStruct3 = benchStructT2{
-	benchStructT1: benchStruct1,
+	BenchStructT1: benchStruct1,
 	G:             benchStruct1,
 	I:             &smallIntSlice,
 	J: map[string]*map[int]int{
@@ -114,7 +114,7 @@ var benchStruct3 = benchStructT2{
 }
 
 var benchStruct2 = benchStructT2{
-	benchStructT1: benchStruct1,
+	BenchStructT1: benchStruct1,
 	G:             benchStruct1,
 	H:             &benchStruct3,
 	I:             &smallIntSlice,
@@ -157,7 +157,7 @@ func runBenchNestedStruct(b *testing.B, m marshaller, ops int) {
 			}
 			b.StopTimer()
 			if err := DeepEqual(target, benchStruct2); err != nil {
-				b.Fatalf("Incorrect unmarshal: %v", err)
+				b.Fatalf("Incorrect unmarshal: %+v != %v: %v", target, benchStruct2, err)
 			}
 			b.StartTimer()
 		}
@@ -177,7 +177,7 @@ func runBenchFlatStruct(b *testing.B, m marshaller, ops int) {
 		}
 		b.StartTimer()
 	}
-	target := benchStructT1{}
+	target := BenchStructT1{}
 	for i := 0; i < b.N; i++ {
 		if ops&doEncode == doEncode {
 			if encoded, err = m.Marshal(benchStruct1); err != nil {
@@ -398,17 +398,16 @@ func BenchmarkGodecStringMap(b *testing.B) {
 	runBenchMap(b, godecMarshaller{})
 }
 
-func BenchmarkJSONNestedStruct(b *testing.B) {
-	runBenchNestedStruct(b, jsonMarshaller{}, doEncode|doDecode)
-}
-
 func BenchmarkGobNestedStruct(b *testing.B) {
 	runBenchNestedStruct(b, gobMarshaller{}, doEncode|doDecode)
 }
 
+/*
+I would love to run this test, but binc seems broken?
 func BenchmarkBincNestedStruct(b *testing.B) {
 	runBenchNestedStruct(b, bincMarshaller{}, doEncode|doDecode)
 }
+*/
 
 func BenchmarkGodecNestedStruct(b *testing.B) {
 	runBenchNestedStruct(b, godecMarshaller{}, doEncode|doDecode)
