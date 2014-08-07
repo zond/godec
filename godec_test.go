@@ -2,6 +2,7 @@ package godec
 
 import (
 	"bytes"
+	"fmt"
 	"math/rand"
 	"os"
 	"reflect"
@@ -137,23 +138,27 @@ func randomtime_Time() time.Time {
 	return time.Unix(0, randomint64())
 }
 
-func DeepEqual(i1, i2 interface{}) bool {
+func DeepEqual(i1, i2 interface{}) error {
 	return deepEqual(reflect.ValueOf(i1), reflect.ValueOf(i2))
 }
 
-func deepEqual(val1, val2 reflect.Value) bool {
-	for k := val1.Kind(); k == reflect.Ptr || k == reflect.Interface; k = val1.Kind() {
+func deepEqual(val1, val2 reflect.Value) error {
+	for k := val1.Kind(); (k == reflect.Ptr || k == reflect.Interface) && val1.Elem().IsValid(); k = val1.Kind() {
 		val1 = val1.Elem()
 	}
-	for k := val2.Kind(); k == reflect.Ptr || k == reflect.Interface; k = val2.Kind() {
+	for k := val2.Kind(); (k == reflect.Ptr || k == reflect.Interface) && val2.Elem().IsValid(); k = val2.Kind() {
 		val2 = val2.Elem()
 	}
 	if val1.Kind() != val2.Kind() {
-		return false
+		return fmt.Errorf("%+v != %+v (val1.Kind() = %v, val2.Kind() = %v)", val1.Interface(), val2.Interface(), val1.Kind(), val2.Kind())
 	}
 	switch val1.Kind() {
+	case reflect.Ptr:
+		return nil
 	case reflect.Bool:
-		return val1.Bool() == val2.Bool()
+		if val1.Bool() != val2.Bool() {
+			return fmt.Errorf("%+v != %+v", val1.Bool(), val2.Bool())
+		}
 	case reflect.Int:
 		fallthrough
 	case reflect.Int8:
@@ -163,7 +168,9 @@ func deepEqual(val1, val2 reflect.Value) bool {
 	case reflect.Int32:
 		fallthrough
 	case reflect.Int64:
-		return val1.Int() == val2.Int()
+		if val1.Int() != val2.Int() {
+			return fmt.Errorf("%+v != %+v", val1.Int(), val2.Int())
+		}
 	case reflect.Uint:
 		fallthrough
 	case reflect.Uint8:
@@ -175,29 +182,35 @@ func deepEqual(val1, val2 reflect.Value) bool {
 	case reflect.Uint64:
 		fallthrough
 	case reflect.Uintptr:
-		return val1.Uint() == val2.Uint()
+		if val1.Uint() != val2.Uint() {
+			return fmt.Errorf("%+v != %+v", val1.Uint(), val2.Uint())
+		}
 	case reflect.Float32:
 		fallthrough
 	case reflect.Float64:
-		return val1.Float() == val2.Float()
+		if val1.Float() != val2.Float() {
+			return fmt.Errorf("%+v != %+v", val1.Float(), val2.Float())
+		}
 	case reflect.Complex64:
 		fallthrough
 	case reflect.Complex128:
-		return val1.Complex() == val2.Complex()
+		if val1.Complex() != val2.Complex() {
+			return fmt.Errorf("%+v != %+v", val1.Complex(), val2.Complex())
+		}
 	case reflect.Array:
 		fallthrough
 	case reflect.Slice:
 		if val1.Len() != val2.Len() {
-			return false
+			return fmt.Errorf("%+v != %+v (val1.Len() = %v, val2.Len() = %v)", val1.Interface(), val2.Interface(), val1.Len(), val2.Len())
 		}
 		for i := 0; i < val1.Len(); i++ {
-			if !deepEqual(val1.Index(i), val2.Index(i)) {
-				return false
+			if err := deepEqual(val1.Index(i), val2.Index(i)); err != nil {
+				return err
 			}
 		}
 	case reflect.Map:
 		if val1.Len() != val2.Len() {
-			return false
+			return fmt.Errorf("%+v != %+v (val1.Len() = %v, val2.Len() = %v)", val1.Interface(), val2.Interface(), val1.Len(), val2.Len())
 		}
 		mapType := val1.Type()
 		keyType := mapType.Key()
@@ -226,41 +239,52 @@ func deepEqual(val1, val2 reflect.Value) bool {
 			}
 			fake1Vals := fake1.MapIndex(key)
 			if !fake1Vals.IsValid() {
-				return false
+				return fmt.Errorf("%+v != %+v (%v not found in former)", val1.Interface(), val2.Interface(), key.Interface())
 			}
 			found := false
+			errors := []error{}
 			for i := 0; i < fake1Vals.Len(); i++ {
-				if deepEqual(value, fake1Vals.Index(i)) {
+				if err := deepEqual(value, fake1Vals.Index(i)); err == nil {
 					found = true
 					break
+				} else {
+					errors = append(errors, err)
 				}
 			}
 			if !found {
-				return false
+				return fmt.Errorf("%+v != %+v:\n%v", val1.Interface(), val2.Interface(), errors)
 			}
 		}
 	case reflect.String:
-		return val1.String() == val2.String()
+		if val1.String() != val2.String() {
+			return fmt.Errorf("%#v != %#v", val1.String(), val2.String())
+		}
 	case reflect.Struct:
 		if val1.Type() != val2.Type() {
-			return false
+			return fmt.Errorf("%+v != %+v (val1.Type() = %v, val2.Type() = %v)", val1.Interface(), val2.Interface(), val1.Type(), val2.Type())
 		}
 		switch i := val1.Interface().(type) {
 		case time.Time:
 			i2 := val2.Interface().(time.Time)
-			return i.Equal(i2)
+			if !i.Equal(i2) {
+				return fmt.Errorf("%+v != %+v", i, i2)
+			}
 		default:
 			typ := val1.Type()
 			for i := 0; i < typ.NumField(); i++ {
-				if !deepEqual(val1.Field(i), val2.Field(i)) {
-					return false
+				if val1.Field(i).IsValid() && val2.Field(i).IsValid() {
+					if err := deepEqual(val1.Field(i), val2.Field(i)); err != nil {
+						return err
+					}
+				} else if val1.Field(i).IsValid() || val2.Field(i).IsValid() {
+					return fmt.Errorf("%+v != %+v (val1.%v.IsValid() = %v, val2.%v.IsValid() = %v)", val1.Interface(), val2.Interface(), typ.Field(i).Name, val1.Field(i).IsValid(), typ.Field(i).Name, val2.Field(i).IsValid())
 				}
 			}
 		}
 	default:
-		return false
+		return fmt.Errorf("Unrecognized kind %v", val1.Kind())
 	}
-	return true
+	return nil
 }
 
 func encodeDecode(t *testing.T, src, dst interface{}) {
@@ -276,8 +300,8 @@ func encodeDecodeWithCMP(t *testing.T, src, cmp, dst interface{}) {
 	if err = NewDecoder(buf).Decode(dst); err != nil {
 		t.Fatalf("Unable to decode to %v: %v", reflect.ValueOf(dst).Elem().Interface(), err)
 	}
-	if !DeepEqual(cmp, dst) {
-		t.Fatalf("Encoding/decoding %v produced %v", prettify(cmp), prettify(dst))
+	if err := DeepEqual(cmp, dst); err != nil {
+		t.Fatalf("Encoding/decoding\n%v\nproduced\n%v\n%v", cmp, dst, err)
 	}
 	b, err := Marshal(src)
 	if err != nil {
@@ -286,8 +310,8 @@ func encodeDecodeWithCMP(t *testing.T, src, cmp, dst interface{}) {
 	if err = Unmarshal(b, dst); err != nil {
 		t.Fatalf("Unable to unmarshal to %v: %v", dst, err)
 	}
-	if !DeepEqual(cmp, dst) {
-		t.Fatalf("Marshalling/unmarshalling %v produced %v", prettify(cmp), prettify(dst))
+	if err := DeepEqual(cmp, dst); err != nil {
+		t.Fatalf("Marshalling/unmarshalling\n%v\nproduced\n%v\n", cmp, dst, err)
 	}
 }
 
@@ -343,7 +367,7 @@ type structThing2 struct {
 	C *structThing1
 }
 
-func TestManualEncodeDecodeStructTypes(t *testing.T) {
+func TestManualEncodeDecodeFlatStructTypes(t *testing.T) {
 	var dst structThing1
 	encodeDecode(t, structThing1{
 		A: 33,
@@ -360,7 +384,121 @@ func TestManualEncodeDecodeStructTypes(t *testing.T) {
 	}, &dst2)
 }
 
-func TestManualEncodeDecodeStructTypesToInterfaces(t *testing.T) {
+type testStructT1 struct {
+	A int
+	B string
+	C []byte
+	D time.Time
+	E []string
+	F byte
+}
+
+type testStructT2 struct {
+	testStructT1
+	G testStructT1
+	H *testStructT2
+	I *[]int
+	J map[string]*map[int]int
+	K map[int]*testStructT2
+}
+
+var testStruct1 = testStructT1{
+	A: 4412,
+	B: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+	C: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0},
+	D: time.Unix(1407311220, 0),
+	E: []string{"aaaaaaaaaaa", "bbbbbbbbbbbb", "ccccccccccccc", "dddddddddddddd", "eeeeeeeeeeeeee", "fffffffffffffff"},
+	F: 43,
+}
+
+var testStruct3 = testStructT2{
+	testStructT1: testStruct1,
+	G:            testStruct1,
+	I:            &smallIntSlice,
+	J: map[string]*map[int]int{
+		"a": &smallIntMap,
+		"b": &smallIntMap,
+	},
+}
+
+var testStruct2 = testStructT2{
+	testStructT1: testStruct1,
+	G:            testStruct1,
+	H:            &testStruct3,
+	I:            &smallIntSlice,
+	J: map[string]*map[int]int{
+		"a": &smallIntMap,
+		"b": &smallIntMap,
+	},
+	K: map[int]*testStructT2{
+		44: &testStruct3,
+		91: &testStruct3,
+	},
+}
+
+func TestManualEncodeDecodeNestedStructTypes(t *testing.T) {
+	var dst testStructT2
+	encodeDecode(t, testStruct2, &dst)
+}
+
+func TestManualEncodeDecodeNestedStructTypesToInterfaces(t *testing.T) {
+	var dst interface{}
+	t1 := map[interface{}]interface{}{
+		"A": 4412,
+		"B": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+		"C": string([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0}),
+		"D": time.Unix(1407311220, 0),
+		"E": []string{"aaaaaaaaaaa", "bbbbbbbbbbbb", "ccccccccccccc", "dddddddddddddd", "eeeeeeeeeeeeee", "fffffffffffffff"},
+		"F": uint8(43),
+	}
+	sl1 := []interface{}{
+		1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0,
+	}
+	m1 := map[interface{}]interface{}{
+		int64(1):  int64(4),
+		int64(4):  int64(5),
+		int64(7):  int64(1),
+		int64(8):  int64(11),
+		int64(91): int64(32),
+	}
+	t3 := map[interface{}]interface{}{
+		"A": 4412,
+		"B": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+		"C": string([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0}),
+		"D": time.Unix(1407311220, 0),
+		"E": []string{"aaaaaaaaaaa", "bbbbbbbbbbbb", "ccccccccccccc", "dddddddddddddd", "eeeeeeeeeeeeee", "fffffffffffffff"},
+		"F": uint8(43),
+		"G": t1,
+		"I": sl1,
+		"J": map[interface{}]interface{}{
+			"a": &m1,
+			"b": &m1,
+		},
+		"K": map[interface{}]interface{}{},
+	}
+	t2 := map[interface{}]interface{}{
+		"A": 4412,
+		"B": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+		"C": string([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0}),
+		"D": time.Unix(1407311220, 0),
+		"E": []string{"aaaaaaaaaaa", "bbbbbbbbbbbb", "ccccccccccccc", "dddddddddddddd", "eeeeeeeeeeeeee", "fffffffffffffff"},
+		"F": uint8(43),
+		"G": t1,
+		"H": t3,
+		"I": sl1,
+		"J": map[interface{}]interface{}{
+			"a": m1,
+			"b": m1,
+		},
+		"K": map[interface{}]interface{}{
+			int64(44): t3,
+			int64(91): t3,
+		},
+	}
+	encodeDecodeWithCMP(t, testStruct2, t2, &dst)
+}
+
+func TestManualEncodeDecodeFlatStructTypesToInterfaces(t *testing.T) {
 	var dst interface{}
 	encodeDecodeWithCMP(t, structThing1{
 		A: 33,

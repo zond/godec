@@ -189,18 +189,17 @@ func encodereflect_Value(w *encodeWriter, encType bool, v reflect.Value) (err er
 	case reflect.String:
 		err = rawencodestring(w, v.String())
 	case reflect.Struct:
-		if err = rawencodeuint(w, uint(refType.NumField())); err != nil {
+		names := []string{}
+		values := []reflect.Value{}
+		collectStructValues(v, refType, &names, &values)
+		if err = rawencodeuint(w, uint(len(names))); err != nil {
 			return
 		}
-		for i := 0; i < refType.NumField(); i++ {
-			if err = rawencodestring(w, refType.Field(i).Name); err != nil {
+		for index, name := range names {
+			if err = rawencodestring(w, name); err != nil {
 				return
 			}
-			val := v.Field(i)
-			for val.Kind() == reflect.Ptr {
-				val = val.Elem()
-			}
-			if err = encodeinterface__(w, true, val.Interface(), &val); err != nil {
+			if err = encodeinterface__(w, true, values[index].Interface(), &values[index]); err != nil {
 				return
 			}
 		}
@@ -210,8 +209,33 @@ func encodereflect_Value(w *encodeWriter, encType bool, v reflect.Value) (err er
 	return
 }
 
+func collectStructValues(v reflect.Value, refType reflect.Type, names *[]string, values *[]reflect.Value) {
+	for i := 0; i < refType.NumField(); i++ {
+		field := refType.Field(i)
+		if field.Anonymous {
+			collectStructValues(v.Field(i), field.Type, names, values)
+		} else {
+			val := v.Field(i)
+			for val.Kind() == reflect.Ptr {
+				val = val.Elem()
+			}
+			if val.IsValid() {
+				*names = append(*names, field.Name)
+				*values = append(*values, val)
+			}
+		}
+	}
+}
+
 func rawencodetime_Time(w *encodeWriter, t time.Time) (err error) {
-	return rawencodeint64(w, t.UnixNano())
+	b, err := t.MarshalBinary()
+	if err != nil {
+		return
+	}
+	if err = rawencodeuint(w, uint(len(b))); err != nil {
+		return
+	}
+	return w.writeBytes(b)
 }
 
 func encodebinary_Marshaler(w *encodeWriter, encType bool, bm encoding.BinaryMarshaler) (err error) {

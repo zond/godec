@@ -389,12 +389,15 @@ func rawdecodestring(r *decodeReader, s *string) (err error) {
 }
 
 func rawdecodetime_Time(r *decodeReader, t *time.Time) (err error) {
-	var i int64
-	if err = rawdecodeint64(r, &i); err != nil {
+	var l uint
+	if err = rawdecodeuint(r, &l); err != nil {
 		return
 	}
-	*t = time.Unix(0, i)
-	return
+	b, err := r.readBytes(int(l))
+	if err != nil {
+		return
+	}
+	return t.UnmarshalBinary(b)
 }
 
 // The special case for byte slices is here, and we treat byte slices exactly like strings.
