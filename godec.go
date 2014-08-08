@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"runtime"
+	"sync"
 )
 
 const (
@@ -32,6 +33,27 @@ const (
 	binaryUnMarshalerKind
 	gobDEncoderKind
 )
+
+type Infofer interface {
+	Infof(f string, i ...interface{})
+}
+
+var infofer Infofer
+var lock = &sync.RWMutex{}
+
+func SetLogger(i Infofer) {
+	lock.Lock()
+	defer lock.Unlock()
+	infofer = i
+}
+
+func Infof(f string, i ...interface{}) {
+	lock.RLock()
+	defer lock.RUnlock()
+	if infofer != nil {
+		infofer.Infof(f, i...)
+	}
+}
 
 type stackErr struct {
 	Err   error
@@ -171,14 +193,16 @@ func getTypeOf(t reflect.Type) (result *Type, err error) {
 		result = &Type{Base: complex64Kind}
 	case reflect.Complex128:
 		result = &Type{Base: complex128Kind}
-	case reflect.Slice:
-		fallthrough
-	case reflect.Array:
-		var valueType *Type
-		if valueType, err = getTypeOf(t.Elem()); err != nil {
-			return
+	case reflect.Slice, reflect.Array:
+		if t.Elem().Kind() == reflect.Uint8 {
+			result = &Type{Base: stringKind}
+		} else {
+			var valueType *Type
+			if valueType, err = getTypeOf(t.Elem()); err != nil {
+				return
+			}
+			result = &Type{Base: sliceKind, Value: valueType}
 		}
-		result = &Type{Base: sliceKind, Value: valueType}
 	case reflect.Map:
 		var keyType *Type
 		if keyType, err = getTypeOf(t.Key()); err != nil {

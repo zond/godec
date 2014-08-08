@@ -161,9 +161,6 @@ func encodereflect_Value(w *encodeWriter, encType bool, v reflect.Value) (err er
 		}
 		for i := 0; i < v.Len(); i++ {
 			el := v.Index(i)
-			for el.Kind() == reflect.Ptr {
-				el = el.Elem()
-			}
 			if err = encodeinterface__(w, typ.Value.Base == interface__Kind, el.Interface(), &el); err != nil {
 				return
 			}
@@ -174,12 +171,6 @@ func encodereflect_Value(w *encodeWriter, encType bool, v reflect.Value) (err er
 		}
 		for _, key := range v.MapKeys() {
 			value := v.MapIndex(key)
-			for key.Kind() == reflect.Ptr {
-				key = key.Elem()
-			}
-			for value.Kind() == reflect.Ptr {
-				value = value.Elem()
-			}
 			if err = encodeinterface__(w, typ.Key.Base == interface__Kind, key.Interface(), &key); err != nil {
 				return
 			}
@@ -218,12 +209,13 @@ func collectStructValues(v reflect.Value, refType reflect.Type, names *[]string,
 				collectStructValues(v.Field(i), field.Type, names, values)
 			} else {
 				val := v.Field(i)
+				origVal := val
 				for val.Kind() == reflect.Ptr {
 					val = val.Elem()
 				}
 				if val.IsValid() {
 					*names = append(*names, field.Name)
-					*values = append(*values, val)
+					*values = append(*values, origVal)
 				}
 			}
 		}
