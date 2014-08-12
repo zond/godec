@@ -118,6 +118,10 @@ func decodeType(r *decodeReader) (result *Type, err error) {
 		if result.Value, err = decodeType(r); err != nil {
 			return
 		}
+	case ptrKind:
+		if result.Value, err = decodeType(r); err != nil {
+			return
+		}
 	}
 	return
 }
@@ -447,8 +451,10 @@ func decodeSliceOfuint8(r *decodeReader, decType bool, v *[]uint8) (err error) {
 
 func decodeInterfaceWithType(r *decodeReader, t *Type, i *interface{}) (err error) {
 	switch t.Base {
+	case nilKind:
+		// nothing was encoded, don't decode anything
 	case interface__Kind:
-		if err = rawdecodeinterface__(r, i); err != nil {
+		if err = decodeinterface__(r, true, i); err != nil {
 			return
 		}
 	case boolKind:
@@ -558,6 +564,12 @@ func decodeInterfaceWithType(r *decodeReader, t *Type, i *interface{}) (err erro
 			return
 		}
 		*i = proxy
+	case ptrKind:
+		var proxy interface{}
+		if err = decodeInterfaceWithType(r, t.Value, &proxy); err != nil {
+			return
+		}
+		*i = &proxy
 	case sliceKind:
 		var l uint
 		if err = rawdecodeuint(r, &l); err != nil {
@@ -596,11 +608,37 @@ func decodeInterfaceWithType(r *decodeReader, t *Type, i *interface{}) (err erro
 	return
 }
 
-func decodeinterface__(r *decodeReader, decType bool, i *interface{}) (err error) {
-	return rawdecodeinterface__(r, i)
+func decodeinterface__Ptr(r *decodeReader, decType bool, i **interface{}) (err error) {
+	if decType {
+		var t *Type
+		t, err = decodeType(r)
+		if err != nil {
+			return
+		}
+		if t.Base != ptrKind {
+			err = errorf("Unable to decode %v into **interface{}", t)
+			return
+		}
+		if t.Value.Base != interface__Kind {
+			err = errorf("Unable to decode %v into **interface{}", t)
+			return
+		}
+	}
+	notNil := true
+	if err = rawdecodebool(r, &notNil); err != nil {
+		return
+	}
+	if notNil {
+		var val interface{}
+		if err = decode(r, true, &val); err != nil {
+			return
+		}
+		*i = &val
+	}
+	return
 }
 
-func rawdecodeinterface__(r *decodeReader, i *interface{}) (err error) {
+func decodeinterface__(r *decodeReader, decType bool, i *interface{}) (err error) {
 	t, err := decodeType(r)
 	if err != nil {
 		return

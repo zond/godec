@@ -143,18 +143,25 @@ func DeepEqual(i1, i2 interface{}) error {
 }
 
 func deepEqual(val1, val2 reflect.Value) error {
-	for k := val1.Kind(); (k == reflect.Ptr || k == reflect.Interface) && val1.Elem().IsValid(); k = val1.Kind() {
+	for k := val1.Kind(); k == reflect.Ptr || k == reflect.Interface; k = val1.Kind() {
 		val1 = val1.Elem()
 	}
-	for k := val2.Kind(); (k == reflect.Ptr || k == reflect.Interface) && val2.Elem().IsValid(); k = val2.Kind() {
+	for k := val2.Kind(); k == reflect.Ptr || k == reflect.Interface; k = val2.Kind() {
 		val2 = val2.Elem()
+	}
+	if !val1.IsValid() {
+		if !val2.IsValid() {
+			return nil
+		} else {
+			return fmt.Errorf("%v != %v", val1, val2)
+		}
+	} else if !val2.IsValid() {
+		return fmt.Errorf("%v != %v", val1, val2)
 	}
 	if val1.Kind() != val2.Kind() {
 		return fmt.Errorf("%+v != %+v (val1.Kind() = %v, val2.Kind() = %v)", val1.Interface(), val2.Interface(), val1.Kind(), val2.Kind())
 	}
 	switch val1.Kind() {
-	case reflect.Ptr:
-		return nil
 	case reflect.Bool:
 		if val1.Bool() != val2.Bool() {
 			return fmt.Errorf("%+v != %+v", val1.Bool(), val2.Bool())
@@ -218,41 +225,60 @@ func deepEqual(val1, val2 reflect.Value) error {
 			keyType = keyType.Elem()
 		}
 		fake1 := reflect.MakeMap(reflect.MapOf(keyType, reflect.SliceOf(mapType.Elem())))
+		var nilValue reflect.Value
+		var nilKey reflect.Value
 		for _, key := range val1.MapKeys() {
 			origKey := key
 			for key.Kind() == reflect.Ptr {
 				key = key.Elem()
 			}
-			var fakeVals reflect.Value
-			if fakeVals = fake1.MapIndex(key); fakeVals.IsValid() {
-				fakeVals = reflect.Append(fakeVals, val1.MapIndex(origKey))
+			if key.IsValid() {
+				var fakeVals reflect.Value
+				if fakeVals = fake1.MapIndex(key); fakeVals.IsValid() {
+					fakeVals = reflect.Append(fakeVals, val1.MapIndex(origKey))
+				} else {
+					fakeVals = reflect.MakeSlice(reflect.SliceOf(mapType.Elem()), 0, 1)
+					fakeVals = reflect.Append(fakeVals, val1.MapIndex(origKey))
+				}
+				fake1.SetMapIndex(key, fakeVals)
 			} else {
-				fakeVals = reflect.MakeSlice(reflect.SliceOf(mapType.Elem()), 0, 1)
-				fakeVals = reflect.Append(fakeVals, val1.MapIndex(origKey))
+				nilKey = origKey
+				nilValue = val1.MapIndex(origKey)
 			}
-			fake1.SetMapIndex(key, fakeVals)
 		}
 		for _, key := range val2.MapKeys() {
 			value := val2.MapIndex(key)
 			for key.Kind() == reflect.Ptr {
 				key = key.Elem()
 			}
-			fake1Vals := fake1.MapIndex(key)
-			if !fake1Vals.IsValid() {
-				return fmt.Errorf("%+v != %+v (%v not found in former)", val1.Interface(), val2.Interface(), key.Interface())
-			}
-			found := false
-			errors := []error{}
-			for i := 0; i < fake1Vals.Len(); i++ {
-				if err := deepEqual(value, fake1Vals.Index(i)); err == nil {
-					found = true
-					break
-				} else {
-					errors = append(errors, err)
+			if key.IsValid() {
+				fake1Vals := fake1.MapIndex(key)
+				if !fake1Vals.IsValid() {
+					return fmt.Errorf("%+v != %+v (%v not found in former)", val1.Interface(), val2.Interface(), key.Interface())
+				}
+				found := false
+				errors := []error{}
+				for i := 0; i < fake1Vals.Len(); i++ {
+					if err := deepEqual(value, fake1Vals.Index(i)); err == nil {
+						found = true
+						break
+					} else {
+						errors = append(errors, err)
+					}
+				}
+				if !found {
+					return fmt.Errorf("%+v != %+v:\n%v", val1.Interface(), val2.Interface(), errors)
 				}
 			}
-			if !found {
-				return fmt.Errorf("%+v != %+v:\n%v", val1.Interface(), val2.Interface(), errors)
+		}
+		if nilKey.IsValid() {
+			value := val2.MapIndex(nilKey)
+			if value.IsValid() {
+				if err := deepEqual(value, nilValue); err != nil {
+					return fmt.Errorf("%+v != %+v (nil key in val1 != nil key in val1 != nil key in val2: %v)", val1.Interface(), val2.Interface(), err)
+				}
+			} else {
+				return fmt.Errorf("%+v != %+v (no nil key in latter)", val1.Interface(), val2.Interface())
 			}
 		}
 	case reflect.String:
@@ -313,6 +339,27 @@ func encodeDecodeWithCMP(t *testing.T, src, cmp, dst interface{}) {
 	if err := DeepEqual(cmp, dst); err != nil {
 		t.Fatalf("Marshalling/unmarshalling\n%v\nproduced\n%v\n", cmp, dst, err)
 	}
+}
+
+func TestManualEncodeDecodeEmptyInterface(t *testing.T) {
+	var dst interface{}
+	var src interface{}
+	encodeDecode(t, src, &dst)
+}
+
+func TestManualEncodeDecodeSliceOfNilstringPtr(t *testing.T) {
+	var dst []*string
+	src := make([]*string, 5)
+	encodeDecode(t, src, &dst)
+}
+
+type nilStruct struct {
+	A *string
+}
+
+func TestManualEncodeDecodeStructWithNilFields(t *testing.T) {
+	var dst nilStruct
+	encodeDecode(t, nilStruct{}, &dst)
 }
 
 func TestManualEncodeDecodeMapOfInterface__PtrToInterface__(t *testing.T) {

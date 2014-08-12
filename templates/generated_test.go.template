@@ -18,8 +18,12 @@ func randomSliceOf{{gofilter $name}}Ptr() []*{{$name}} {
   rval := []*{{$name}}{}
 	l := randomuint16() % 512
 	for i := uint16(0); i < l; i++ {
-	  x := random{{gofilter $name}}()
-	  rval = append(rval, &x)
+	  if randomuint16() % 2 == 1 {
+		  rval = append(rval, nil)
+		} else {
+      x := random{{gofilter $name}}()
+		  rval = append(rval, &x)
+		}
 	}
 	return rval
 }
@@ -46,6 +50,9 @@ func randomMapOf{{gofilter $name}}To{{gofilter $name2}}() map[{{$name}}]{{$name2
 func randomMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}() map[*{{$name}}]{{$name2}} {
   rval := map[*{{$name}}]{{$name2}}{}
 	l := randomuint16() % 512
+	if randomuint16() % 2 == 1 {
+	  rval[nil] = random{{gofilter $name2}}()
+	}
 	for i := uint16(0); i < l; i++ {
 	  key := random{{gofilter $name}}()
 	  rval[&key] = random{{gofilter $name2}}()
@@ -56,10 +63,22 @@ func randomMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}() map[*{{$name}}]{{$n
 func randomMapOf{{gofilter $name}}PtrTo{{gofilter $name2}}Ptr() map[*{{$name}}]*{{$name2}} {
   rval := map[*{{$name}}]*{{$name2}}{}
 	l := randomuint16() % 512
+	if randomuint16() % 2 == 1 {
+	  if randomuint16() % 2 == 1 {
+			rval[nil] = nil
+		} else {
+		  val := random{{gofilter $name2}}()
+			rval[nil] = &val
+		}
+	}
 	for i := uint16(0); i < l; i++ {
 	  key := random{{gofilter $name}}() 
-		val := random{{gofilter $name2}}()
-	  rval[&key] = &val
+		if randomuint16() % 2 == 1 {
+		  rval[&key] = nil
+    } else {
+      val := random{{gofilter $name2}}()
+			rval[&key] = &val
+		}
 	}
 	return rval
 }
@@ -68,8 +87,12 @@ func randomMapOf{{gofilter $name}}To{{gofilter $name2}}Ptr() map[{{$name}}]*{{$n
   rval := map[{{$name}}]*{{$name2}}{}
 	l := randomuint16() % 512
 	for i := uint16(0); i < l; i++ {
-		val := random{{gofilter $name2}}()
-	  rval[random{{gofilter $name}}()] = &val
+		if randomuint16() % 2 == 1 {
+		  rval[random{{gofilter $name}}()] = nil
+    } else {
+      val := random{{gofilter $name2}}()
+			rval[random{{gofilter $name}}()] = &val
+		}
 	}
 	return rval
 }

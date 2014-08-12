@@ -27,11 +27,13 @@ const (
 	float64Kind
 	complex64Kind
 	complex128Kind
+	ptrKind
 	sliceKind
 	mapKind
 	structKind
 	binaryUnMarshalerKind
 	gobDEncoderKind
+	nilKind
 )
 
 type Infofer interface {
@@ -89,11 +91,13 @@ type Type struct {
 func (self Type) String() string {
 	switch self.Base {
 	case sliceKind:
-		return "[]" + self.Value.String()
+		return fmt.Sprintf("[]%v", self.Value)
 	case mapKind:
-		return "map[" + self.Key.String() + "]" + self.Value.String()
+		return fmt.Sprintf("map[%v]%v", self.Key, self.Value)
+	case ptrKind:
+		return fmt.Sprintf("*%v", self.Value)
 	default:
-		return self.Base.String()
+		return fmt.Sprint(self.Base)
 	}
 }
 
@@ -150,6 +154,8 @@ func (self Kind) String() string {
 		return "[]"
 	case mapKind:
 		return "map[]"
+	case ptrKind:
+		return "*"
 	case binaryUnMarshalerKind:
 		return "encoding.BinaryUnMarshaler"
 	}
@@ -157,9 +163,6 @@ func (self Kind) String() string {
 }
 
 func getTypeOf(t reflect.Type) (result *Type, err error) {
-	for t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
 	switch t.Kind() {
 	case reflect.Bool:
 		result = &Type{Base: boolKind}
@@ -193,6 +196,12 @@ func getTypeOf(t reflect.Type) (result *Type, err error) {
 		result = &Type{Base: complex64Kind}
 	case reflect.Complex128:
 		result = &Type{Base: complex128Kind}
+	case reflect.Ptr:
+		var valueType *Type
+		if valueType, err = getTypeOf(t.Elem()); err != nil {
+			return
+		}
+		result = &Type{Base: ptrKind, Value: valueType}
 	case reflect.Slice, reflect.Array:
 		if t.Elem().Kind() == reflect.Uint8 {
 			result = &Type{Base: stringKind}
