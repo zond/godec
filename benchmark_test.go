@@ -9,7 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"labix.org/v2/mgo/bson"
+
 	binc "github.com/ugorji/go/codec"
+	"github.com/vmihailenco/msgpack"
 )
 
 type marshaller interface {
@@ -323,6 +326,26 @@ func runBenchStringEncode(b *testing.B, m marshaller) {
 	}
 }
 
+type bsonMarshaller struct{}
+
+func (self bsonMarshaller) Marshal(i interface{}) ([]byte, error) {
+	return bson.Marshal(i)
+}
+
+func (self bsonMarshaller) Unmarshal(b []byte, i interface{}) error {
+	return bson.Unmarshal(b, i)
+}
+
+type msgpackMarshaller struct{}
+
+func (self msgpackMarshaller) Marshal(i interface{}) ([]byte, error) {
+	return msgpack.Marshal(i)
+}
+
+func (self msgpackMarshaller) Unmarshal(b []byte, i interface{}) error {
+	return msgpack.Unmarshal(b, i)
+}
+
 type jsonMarshaller struct{}
 
 func (self jsonMarshaller) Marshal(i interface{}) ([]byte, error) {
@@ -383,12 +406,9 @@ func BenchmarkJSONStringMap(b *testing.B) {
 	runBenchMap(b, jsonMarshaller{})
 }
 
-/*
-I would love to run this test, but binc seems broken?
 func BenchmarkBincStringMap(b *testing.B) {
 	runBenchMap(b, bincMarshaller{})
 }
-*/
 
 func BenchmarkGobStringMap(b *testing.B) {
 	runBenchMap(b, gobMarshaller{})
@@ -402,8 +422,11 @@ func BenchmarkGobNestedStruct(b *testing.B) {
 	runBenchNestedStruct(b, gobMarshaller{}, doEncode|doDecode)
 }
 
+func BenchmarkMsgpackNestedStruct(b *testing.B) {
+	runBenchNestedStruct(b, msgpackMarshaller{}, doEncode|doDecode)
+}
+
 /*
-I would love to run this test, but binc seems broken?
 func BenchmarkBincNestedStruct(b *testing.B) {
 	runBenchNestedStruct(b, bincMarshaller{}, doEncode|doDecode)
 }
@@ -423,6 +446,10 @@ func BenchmarkGobFlatStruct(b *testing.B) {
 
 func BenchmarkBincFlatStruct(b *testing.B) {
 	runBenchFlatStruct(b, bincMarshaller{}, doEncode|doDecode)
+}
+
+func BenchmarkMsgpackFlatStruct(b *testing.B) {
+	runBenchFlatStruct(b, msgpackMarshaller{}, doEncode|doDecode)
 }
 
 func BenchmarkGodecFlatStruct(b *testing.B) {
